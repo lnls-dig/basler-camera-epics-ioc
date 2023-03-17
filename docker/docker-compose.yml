@@ -1,0 +1,8 @@
+services:
+  ioc:
+    image: ghcr.io/lnls-dig/basler-camera-epics-ioc
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        JOBS: ${JOBS:-1}
