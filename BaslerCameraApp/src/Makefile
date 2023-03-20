@@ -16,10 +16,12 @@ DBD += BaslerCamera.dbd
 BaslerCamera_DBD += base.dbd
 
 # Include dbd files from all support applications:
-#BaslerCamera_DBD += xxx.dbd
+BaslerCamera_DBD += asyn.dbd
+BaslerCamera_DBD += ADAravisSupport.dbd
 
 # Add all the support libraries needed by this IOC
-#BaslerCamera_LIBS += xxx
+BaslerCamera_LIBS += asyn
+BaslerCamera_LIBS += ADAravis
 
 # BaslerCamera_registerRecordDeviceDriver.cpp derives from BaslerCamera.dbd
 BaslerCamera_SRCS += BaslerCamera_registerRecordDeviceDriver.cpp
