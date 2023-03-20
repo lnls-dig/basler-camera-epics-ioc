@@ -6,3 +6,8 @@ services:
       dockerfile: docker/Dockerfile
       args:
         JOBS: ${JOBS:-1}
+    network_mode: host
+    environment:
+      EPICS_PV_AREA_PREFIX: ${EPICS_PV_AREA_PREFIX:-AREA:}
+      EPICS_PV_DEVICE_PREFIX: ${EPICS_PV_DEVICE_PREFIX:-DEVICE:}
+      IP_ADDRESS: ${BASLER_IP_ADDRESS:-10.128.2.11}

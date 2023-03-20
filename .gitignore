@@ -20,6 +20,9 @@
 # Build directories
 O.*/
 
+# Enviroment variables setup for Docker
+/docker/*.env
+
 # Common files created by other tools
 /QtC-*
 /.vscode/
