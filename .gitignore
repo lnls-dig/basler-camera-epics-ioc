@@ -16,3 +16,6 @@
 
 # Build directories
 O.*/
+
+# Enviroment variables setup for Docker
+/docker/*.env

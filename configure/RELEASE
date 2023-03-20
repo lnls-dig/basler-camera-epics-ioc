@@ -22,11 +22,10 @@
 # the CONFIG_SITE file.
 
 # Variables and paths to dependent modules:
-#MODULES = /path/to/modules
-#MYMODULE = $(MODULES)/my-module
+MODULES = /opt
 
-# If using the sequencer, point SNCSEQ at its top directory:
-#SNCSEQ = $(MODULES)/seq-ver
+ASYN = $(MODULES)/asyn-R4-43
+ADARAVIS = $(MODULES)/areaDetector-R3-12-1/ADAravis
 
 # EPICS_BASE should appear last so earlier modules can override stuff:
 EPICS_BASE = /opt/epics-R7-0-7/base

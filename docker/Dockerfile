@@ -38,6 +38,9 @@ WORKDIR /opt/basler-camera-epics-ioc
 
 COPY . .
 
+RUN make -j ${JOBS} && \
+    chmod +x iocBoot/iocBaslerCamera/st.cmd
+
 RUN apt remove -y \
         git \
         wget \
@@ -46,4 +49,6 @@ RUN apt remove -y \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-CMD ["bash"]
+WORKDIR /opt/basler-camera-epics-ioc/iocBoot/iocBaslerCamera
+
+CMD ["bash", "-c", "./st.cmd"]
