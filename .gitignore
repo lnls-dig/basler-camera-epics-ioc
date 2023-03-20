@@ -1,0 +1,18 @@
+# Install directories
+/bin/
+/cfg/
+/db/
+/dbd/
+/html/
+/include/
+/lib/
+/templates/
+
+# Local configuration files
+/configure/*.local
+
+# iocBoot generated files
+/iocBoot/*ioc*/envPaths
+
+# Build directories
+O.*/
