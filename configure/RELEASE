@@ -25,6 +25,7 @@
 MODULES = /opt
 
 ASYN = $(MODULES)/asyn-R4-43
+CALC = $(MODULES)/calc-R3-7-4
 ADARAVIS = $(MODULES)/areaDetector-R3-12-1/ADAravis
 
 # EPICS_BASE should appear last so earlier modules can override stuff:

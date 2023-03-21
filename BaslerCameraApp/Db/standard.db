@@ -1,0 +1,2182 @@
+######################################################################
+#
+#            BASLER acA1300-75gm High Level PV Database
+#
+# Desc: These PVs provide an abstraction layer for the low level
+# aravisGigE auto-generated PVs. 
+#
+######################################################################
+
+######################################################################
+# BASIC CONTROL
+#
+# Desc: Basic camera control functions, e.g., enable/disable,
+# trigger selection.
+
+# Enable camera acquisition
+record(bo, "$(P)$(R)Enbl-Sel"){
+  field(DESC, "Enable camera acquisition")
+  field(ZNAM, "OFF")
+  field(ONAM, "ON")
+  field(OUT, "$(P)$(R)Cam1Acquire PP")
+}
+
+# Camera acquisition enable status
+record(bi, "$(P)$(R)Enbl-Sts"){
+  field(DESC, "Enable camera acquisition Sts")
+  field(ZNAM, "OFF")
+  field(ONAM, "ON")
+  field(INP, "$(P)$(R)Cam1Acquire_RBV CPP")
+}
+
+# Acquisition mode selection
+record(bo, "$(P)$(R)AcqMode-Sel"){
+  field(DESC, "Camera acquisition mode")
+  field(ZNAM, "AUTO")
+  field(ONAM, "TRIG")
+  # POSTPONE SETTING OF ACQUISITION MODE
+  field(FLNK, "$(P)$(R)AcqModeCalc")
+}
+
+# Select required operations before changing
+# the Acquisition Mode (Trigger Mode in low level)
+record(calc, "$(P)$(R)AcqModeCalc"){
+  field(DESC, "Prepare acq mode settings")
+  field(INPA, "$(P)$(R)AcqMode-Sel.VAL")
+  field(CALC, "A=0?14:9")                         # AcqMode = 0? => Bits = 1110 / AcqMode = 1? => Bits = 1001
+  field(FLNK, "$(P)$(R)AcqModeSeq")
+}
+
+# Execute the required operations 
+record(seq, "$(P)$(R)AcqModeSeq"){
+  field(DESC, "Apply acq mode settings")
+  field(SELM, "Mask")
+  field(SELL, "$(P)$(R)AcqModeCalc.VAL")          # Expected: Bits = 1001 / Bits = 1110
+  field(DO1, "0")                                 # FALSE
+  field(DO2, "0")                                 # "TIMED"
+  field(DO3, "1")                                 # TRUE 
+  field(DOL4, "$(P)$(R)AcqMode-Sel.VAL")          # Desired ACQUISITION MODE
+  field(LNK1, "$(P)$(R)ExposureMode-Sel.DISP")    # Enable dbPutFields
+  field(LNK2, "$(P)$(R)ExposureMode-Sel.VAL PP")  # Set exposure mode to "TIMED"
+  field(LNK3, "$(P)$(R)ExposureMode-Sel.DISP")    # Disable dbPutFields
+  field(LNK4, "$(P)$(R)Cam1TriggerMode PP")      # Turn trigger mode on/off
+}
+
+# Acquisition mode status
+record(bi, "$(P)$(R)AcqMode-Sts"){
+  field(DESC, "Camera acquisition mode Sts")
+  field(ZNAM, "AUTO")
+  field(ONAM, "TRIG")
+  field(INP, "$(P)$(R)Cam1TriggerMode_RBV CPP")
+}
+
+# Acquisition frequency setpoint
+record(ao, "$(P)$(R)AcqPeriod-SP"){
+  field(DESC, "Acquisition period setpoint")
+  field(EGU, "seconds")
+  field(DRVH, "10")                           # Can be increased if required
+  field(DRVL, "0.0124")                       # 81 fps at normal sensor readout
+  field(PREC, "6")
+  field(VAL, "0.2")
+  field(LSV, "MINOR")
+  field(OUT, "$(P)$(R)Cam1AcquirePeriod PP")
+}
+
+# Update acquisition period min limit allowed
+record(calcout, "$(P)$(R)AcqLimCalc"){
+  field(DESC, "Update min acq period allowed")
+  field(INPA, "$(P)$(R)Cam1ReadoutTimeAbs_RBV CPP")
+  field(INPB, "$(P)$(R)Cam1ExposureTimeAbs_RBV CPP")
+  field(CALC, "(A+B)/1000000")
+  field(OUT, "$(P)$(R)AcqPeriod-SP.DRVL")
+}
+
+# Acquisition frequency readback value
+record(ai, "$(P)$(R)AcqPeriod-RB"){
+  field(DESC, "Acquisition period RB")
+  field(EGU, "seconds")
+  field(PREC, "6")
+  field(INP, "$(P)$(R)Cam1AcquirePeriod_RBV CPP")
+}
+
+# Set low alarm limit
+record(ao, "$(P)$(R)AcqPeriodLowLim-SP"){
+  field(DESC, "Acq period low alarm limit")
+  field(PINI, "YES")
+  field(EGU, "seconds")
+  field(PREC, "6")
+  field(DRVH, "10")                           # Same as the AcqPeriod-SP high limit
+  field(DRVL, "0.0124")                       # Same as the AcqPeriod-SP low limit
+  field(VAL, "0.083")                         # 12 Hz is the default alarm limit
+  field(FLNK, "$(P)$(R)AcqPeriodLowLimSeq")
+}
+
+record(seq, "$(P)$(R)AcqPeriodLowLimSeq"){
+  field(DESC, "Acq period low alarm limit seq")
+  field(SELM, "All")
+  field(DOL1, "$(P)$(R)AcqPeriodLowLim-SP")
+  field(LNK1, "$(P)$(R)AcqPeriod-SP.LOW")
+  field(DOL2, "$(P)$(R)AcqPeriodLowLim-SP")
+  field(LNK2, "$(P)$(R)AcqPeriodLowLim-RB PP")
+}
+
+record(ai, "$(P)$(R)AcqPeriodLowLim-RB"){
+  field(DESC, "Acq period low alarm limit RB")
+  field(PREC, "6")
+  field(EGU, "seconds")
+}
+
+# Exposure control mode selection
+record(bo, "$(P)$(R)ExposureMode-Sel"){
+  field(DESC, "Exposure control mode")
+  field(ZNAM, "TIMED")
+  field(ONAM, "TRIGWIDTH")
+  field(OUT, "$(P)$(R)Cam1ExposureMode PP")
+}
+
+# Exposure control mode status
+record(bi, "$(P)$(R)ExposureMode-Sts"){
+  field(DESC, "Exposure control mode Sts")
+  field(ZNAM, "TIMED")
+  field(ONAM, "TRIGWIDTH")
+  field(INP, "$(P)$(R)Cam1ExposureMode_RBV CPP")
+}
+
+# Exposure time setpoint
+record(longout, "$(P)$(R)ExposureTime-SP"){
+  field(DESC, "Exposure time setpoint")
+  field(EGU, "us")
+  field(DRVH, "1000000")
+  field(DRVL, "1")
+  field(VAL, "5000")
+  field(PINI, "YES")
+  field(OUT, "$(P)$(R)Cam1ExposureTimeAbs PP")
+}
+
+# Update max exposure time allowed
+record(calcout, "$(P)$(R)ExposureLimCalc"){
+  field(DESC, "Update max exposure time allowed")
+  field(INPA, "$(P)$(R)Cam1ReadoutTimeAbs_RBV CPP")
+  field(INPB, "$(P)$(R)Cam1AcquirePeriod_RBV CPP")
+  field(CALC, "(B*1000000-A)")
+  field(OUT, "$(P)$(R)ExposureTime-SP.DRVH")
+}
+
+# Exposure time readback value
+record(longin, "$(P)$(R)ExposureTime-RB"){
+  field(DESC, "Exposure time RB")
+  field(EGU, "us")
+  field(INP, "$(P)$(R)Cam1ExposureTimeAbs_RBV CPP")
+}
+
+# Gain control
+record(ao, "$(P)$(R)Gain-SP"){
+  field(DESC, "Camera gain")
+  field(PREC, "6")
+  field(EGU, "dB")
+  field(DRVH, "20")
+  field(DRVL, "0")
+  field(FLNK, "$(P)$(R)GainCalc")
+}
+
+record(calcout, "$(P)$(R)GainCalc"){
+  field(DESC, "Gain raw calculation")
+  field(INPA, "$(P)$(R)Gain-SP")
+  field(CALC, "ceil((10^(A/20))*138)")
+  field(OUT, "$(P)$(R)Cam1GainRaw PP")
+}
+
+record(calc, "$(P)$(R)GainCalcRB"){
+  field(DESC, "Gain readback conversion to dB")
+  field(INPA, "$(P)$(R)Cam1GainRaw_RBV CPP")
+  field(CALC, "20*(log(A/138))")
+  field(FLNK, "$(P)$(R)Gain-RB")
+}
+
+record(ai, "$(P)$(R)Gain-RB"){
+  field(DESC, "Camera gain RB")
+  field(PREC, "6")
+  field(EGU, "dB")
+  field(INP, "$(P)$(R)GainCalcRB")
+}
+
+# Black Level
+
+record(longout, "$(P)$(R)BlackLevel-SP"){
+  field(DESC, "Black level")
+  field(EGU, "gray value")
+  field(DRVH, "64")
+  field(DRVL, "0")
+  field(FLNK, "$(P)$(R)BlackLevelCalc")
+}
+
+record(calcout, "$(P)$(R)BlackLevelCalc"){
+  field(DESC, "Black level raw calc")
+  field(INPA, "$(P)$(R)BlackLevel-SP")
+  field(CALC, "A=64?255:A*4")
+  field(OUT, "$(P)$(R)Cam1BlackLevelRaw PP")
+}
+
+record(calc, "$(P)$(R)BlackLevelCalcRB"){
+  field(DESC, "Black level readback calc")
+  field(INPA, "$(P)$(R)Cam1BlackLevelRaw_RBV CPP")
+  field(CALC, "floor(A/4)")
+  field(FLNK, "$(P)$(R)BlackLevel-RB")
+}
+
+record(longin, "$(P)$(R)BlackLevel-RB"){
+  field(DESC, "Black level RB")
+  field(EGU, "gray value")
+  field(INP, "$(P)$(R)BlackLevelCalcRB")
+}
+
+# Input Trigger Debouncer
+
+record(longout, "$(P)$(R)DebouncerPeriod-SP"){
+  field(DESC, "Debouncer period for trigger input")
+  field(EGU, "us")
+  field(DRVH, "20000")
+  field(DRVL, "0")
+  field(FLNK, "$(P)$(R)DebouncerPeriodSeq")
+}
+
+record(sseq, "$(P)$(R)DebouncerPeriodSeq"){
+  field(DESC, "Sequence to set debouncer period")
+  field(PINI, "YES")
+  field(SELM, "All")
+  field(STR1, "Line1")
+  field(LNK1, "$(P)$(R)Cam1LineSelector PP")         # Set line = Line 1, before setting debouncer
+  field(WAIT1, "Wait")
+  field(DLY1, "0.5")
+  field(DOL2, "$(P)$(R)DebouncerPeriod-SP")
+  field(LNK2, "$(P)$(R)Cam1LineDebouncerTim PP")
+  field(WAIT2, "Wait")
+  field(DLY2, "0.5")
+}
+
+record(longin, "$(P)$(R)DebouncerPeriod-RB"){
+  field(DESC, "Debouncer period for trigger input RB")
+  field(EGU, "us")
+  field(INP, "$(P)$(R)Cam1LineDebouncerTim_RBV CPP")
+}
+
+# Image Data Type
+
+record(bo, "$(P)$(R)DataType-Sel"){
+  field(DESC, "Image data type")
+  field(ZNAM, "8 bits")
+  field(ONAM, "12 bits")
+  field(FLNK, "$(P)$(R)DataTypeCalc")
+}
+
+record(scalcout, "$(P)$(R)DataTypeCalc"){
+  field(DESC, "Data type conversion")
+  field(INPA, "$(P)$(R)DataType-Sel")
+  field(CALC, "A=0?'UInt8':'UInt16'")
+  field(OUT, "$(P)$(R)Cam1DataType PP")
+}
+
+record(scalcout, "$(P)$(R)DataTypeReadCalc"){
+  field(DESC, "Read data type calc")
+  field(INAA, "$(P)$(R)Cam1DataType_RBV CPP")
+  field(CALC, "AA='UInt8'?'8 bits':'12 bits'")
+  field(OUT, "$(P)$(R)DataType-Sts PP")
+}
+
+record(bi, "$(P)$(R)DataType-Sts"){
+  field(DESC, "Image data type status")
+  field(ZNAM, "8 bits")
+  field(ONAM, "12 bits")
+}
+
+# Connection Status
+
+record(bi, "$(P)$(R)Connection-Mon"){
+  field(DESC, "Connection status")
+  field(ZNAM, "Off")
+  field(ONAM, "On")
+  field(VAL, "0")
+  field(INP, "$(P)$(R)Cam1CHKCONN CPP")
+}
+
+######################################################################
+# DEVICE DISCONNECT
+#
+# Desc: Disconnect from device, causing reconnection.
+
+record(bo, "$(P)$(R)Rst-Cmd"){
+  field(DESC, "Reset connection and device")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(HIGH, "6")
+  field(OUT, "$(P)$(R)ValidRst.A PP")
+}
+
+record(calcout, "$(P)$(R)ValidRst"){
+  field(DESC, "Validate reset cmd")
+  field(INPA, "0")
+  field(CALC, "A")
+  field(OOPT, "When Non-zero")
+  field(OUT, "$(P)$(R)TrgRst.PROC PP")
+}
+
+record(seq, "$(P)$(R)TrgRst"){
+  field(DESC, "Trigger hardware reset")
+  field(SELM, "All")
+  field(DO1, "0")
+  field(LNK1, "$(P)$(R)RstDone-Mon PP")     # set reset PV status
+  field(DO2, "1")
+  field(LNK2, "$(P)$(R)Cam1DeviceReset PP") # AutoReconnect record does reconnection
+}
+
+# set by autodownload process chain
+record(mbbi, "$(P)$(R)RstDone-Mon"){
+  field(DESC, "Reset status")
+  field(ZRST, "In Progress")
+  field(ZRVL, "0")
+  field(ONST, "Finished")
+  field(ONVL, "1")
+  field(VAL, "1")
+}
+
+######################################################################
+# AUTOCONNECT
+#
+# Desc: Reconnect to device and download parameters.
+
+# Auto reconnect
+
+record(calcout, "$(P)$(R)AutoReconnect"){
+  field(DESC, "Auto reconnect to device")
+  field(SCAN, "10 second")
+  field(INPA, "$(P)$(R)Connection-Mon")
+  field(CALC, "A=0")
+  field(OOPT, "When Non-zero")
+  field(OUT, "$(P)$(R)Cam1RESET PP")
+  field(DISA, "1")  # record starts disabled
+}
+
+# Auto set PVs
+
+record(calcout, "$(P)$(R)AutoDownload"){
+  field(DESC, "Restore PV values after reconnect")
+  field(INPA, "$(P)$(R)Connection-Mon CPP")
+  field(CALC, "A")
+  field(OOPT, "Transition To Non-zero")
+  field(OUT, "$(P)$(R)InitAfterReconnect.PROC PP")
+  field(DISA, "1")  # record starts disabled
+}
+
+# Reconfigure camera after reconnection
+
+record(seq, "$(P)$(R)InitAfterReconnect"){
+  field(DESC, "Init PVs after reconnection")
+  field(SELM, "All")
+  field(DO1, "1")
+  field(LNK1, "$(P)$(R)InitCamSeq1.PROC PP")  # Reprocess PVs
+  field(DO2, "1")
+  field(LNK2, "$(P)$(R)InitAutoFunctionAOIs1.PROC PP")  # Reconfigure auto function AOIs
+}
+
+######################################################################
+# FAST ACQUISITION MODE
+#
+# Desc: Disable plugins to decrease cpu usage and
+#       allow faster sample rates.
+
+# Fast acq mode
+
+record(bo, "$(P)$(R)FastAcq-Sel"){
+  field(DESC, "Enable fast acquisition mode")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(FLNK, "$(P)$(R)FastAcqCalc")
+}
+
+record(calc, "$(P)$(R)FastAcqCalc"){
+  field(DESC, "Select link for fast acq config")
+  field(INPA, "$(P)$(R)FastAcq-Sel")
+  field(CALC, "A+1")
+  field(FLNK, "$(P)$(R)FastAcqConfig")
+}
+
+record(seq, "$(P)$(R)FastAcqConfig"){
+  field(DESC, "Config fast acquisition mode")
+  field(SELL, "$(P)$(R)FastAcqCalc")
+  field(SELM, "Specified")
+  field(DO1, "1")
+  field(LNK1, "$(P)$(R)EnblAllPlugins.PROC PP")
+  field(DO2, "1")
+  field(LNK2, "$(P)$(R)DsblAllPlugins.PROC PP")
+}
+
+# Disable plugins
+
+record(sseq, "$(P)$(R)DsblAllPlugins"){
+  field(DESC, "Disable all plugins")
+  field(SELM, "All")
+  field(STR1, "Disable")
+  field(LNK1, "$(P)$(R)Transf1EnableCallbacks PP")
+  field(STR2, "Disable")
+  field(LNK2, "$(P)$(R)Proc1EnableCallbacks PP")
+  field(STR3, "Disable")
+  field(LNK3, "$(P)$(R)Proc2EnableCallbacks PP")
+  field(STR4, "Disable")
+  field(LNK4, "$(P)$(R)Stats1EnableCallbacks PP")
+  field(STR5, "Disable")
+  field(LNK5, "$(P)$(R)Stats2EnableCallbacks PP")
+  field(STR6, "Disable")
+  field(LNK6, "$(P)$(R)ROI2EnableCallbacks PP")
+  field(STR7, "Disable")
+  field(LNK7, "$(P)$(R)DimFei1EnableCallbacks PP")
+  field(STR8, "Disable")
+  field(LNK8, "$(P)$(R)Over1EnableCallbacks PP")
+  field(FLNK, "$(P)$(R)BypassPlugins")
+}
+
+record(sseq, "$(P)$(R)BypassPlugins"){
+  field(DESC, "Bypass plugin chain")
+  field(SELM, "All")
+  field(STR1, "CAMPORT")  # camera asyn port name
+  field(LNK1, "$(P)$(R)Image1NDArrayPort PP")
+}
+
+record(sseq, "$(P)$(R)EnblAllPlugins"){
+  field(DESC, "Enable all plugins")
+  field(SELM, "All")
+  field(STR1, "Enable")
+  field(LNK1, "$(P)$(R)Transf1EnableCallbacks PP")
+  field(STR2, "Enable")
+  field(LNK2, "$(P)$(R)Proc1EnableCallbacks PP")
+  field(STR3, "Enable")
+  field(LNK3, "$(P)$(R)Proc2EnableCallbacks PP")
+  field(STR4, "Enable")
+  field(LNK4, "$(P)$(R)Stats1EnableCallbacks PP")
+  field(STR5, "Enable")
+  field(LNK5, "$(P)$(R)Stats2EnableCallbacks PP")
+  # process 'ProfileEnbl-Sel' to restore previous
+  # 'ROI2EnableCallbacks' state
+  field(DO6, "1")
+  field(LNK6, "$(P)$(R)ProfileEnbl-Sel.PROC PP")
+  field(STR7, "Enable")
+  field(LNK7, "$(P)$(R)DimFei1EnableCallbacks PP")
+  field(STR8, "Enable")
+  field(LNK8, "$(P)$(R)Over1EnableCallbacks PP")
+  field(FLNK, "$(P)$(R)RestorePlugins")
+}
+
+record(sseq, "$(P)$(R)RestorePlugins"){
+  field(DESC, "Restore plugin chain")
+  field(SELM, "All")
+  field(STR1, "OVER1")  # overlay plugin asyn port name
+  field(LNK1, "$(P)$(R)Image1NDArrayPort PP")
+  field(DO2, "0")
+  field(LNK2, "$(P)$(R)FastAcq-Sts PP")
+}
+
+record(bi, "$(P)$(R)FastAcq-Sts"){
+  field(DESC, "Fast acquisition mode enable Sts")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+}
+
+######################################################################
+# CAMERA DATA
+#
+# Desc: Camera data array alias.
+
+alias("$(P)$(R)Image1ArrayData", "$(P)$(R)Data-Mon")
+alias("$(P)$(R)Cam1ArrayCounter_RBV", "$(P)$(R)FrameCnt-Mon")
+
+######################################################################
+# ERROR CODES
+#
+# Desc: Error monitoring.
+
+# Last Error
+
+record(mbbi, "$(P)$(R)LastErr-Mon"){
+  field(DESC, "Last error received")
+  field(ZRST, "NoError")
+  field(ZRVL, "0")
+  field(ONST, "Overtrigger")
+  field(ONVL, "1")
+  field(TWST, "Userset")
+  field(TWVL, "2")
+  field(THST, "InvalidParameter")
+  field(THVL, "3")
+  field(FRST, "OverTemperature")
+  field(FRVL, "4")
+  field(FVST, "PowerFailure")
+  field(FVVL, "5")
+  field(SXST, "InsufficientTrig")
+  field(SXVL, "6")
+  field(SVST, "UserDefPixFailur")
+  field(SVVL, "7")
+  field(INP, "$(P)$(R)Cam1LastError_RBV CPP")
+}
+
+# Clear last error
+
+record(bo, "$(P)$(R)ClearLastErr-Cmd"){
+  field(DESC, "Clear the last error")
+  field(ZNAM, "Off")
+  field(ONAM, "On")
+  field(HIGH, "0.5")
+  field(FLNK, "$(P)$(R)ValidClearLastErr")
+}
+
+record(calcout, "$(P)$(R)ValidClearLastErr"){
+  field(DESC, "Validate clear last error cmd")
+  field(INPA, "$(P)$(R)ClearLastErr-Cmd")
+  field(CALC, "A")
+  field(OOPT, "When Non-zero")
+  field(OUT, "$(P)$(R)Cam1ClearLastError PP")
+}
+
+######################################################################
+# TEMPERATURE
+#
+# Desc: Camera temperature parameters.
+
+# Temperature state
+
+record(mbbi, "$(P)$(R)TempState-Mon"){
+  field(DESC, "Temperature state")
+  field(ZRST, "Ok")
+  field(ZRVL, "0")
+  field(ONST, "Critical")
+  field(ONVL, "1")
+  field(TWST, "Error")
+  field(TWVL, "3")
+  field(ZRSV, "NO_ALARM")
+  field(ONSV, "MINOR")
+  field(TWSV, "MAJOR")
+  field(INP, "$(P)$(R)Cam1TemperatureState_RBV CPP")
+}
+
+# Temperature reading
+
+record(ai, "$(P)$(R)Temp-Mon"){
+  field(DESC, "Camera temperature")
+  field(EGU, "degrees")
+  field(PREC, "3")
+  field(INP, "$(P)$(R)Cam1TemperatureAbs_RBV CPP")
+}
+
+######################################################################
+# NETWORKING AND READOUT
+#
+# Desc: Camera network and readout related configurations.
+
+# Readout time absolute
+record(longin, "$(P)$(R)ReadoutTime-Mon"){
+  field(DESC, "Readout time duration")
+  field(EGU, "us")
+  field(INP, "$(P)$(R)Cam1ReadoutTimeAbs_RBV CPP")
+}
+
+# Resulting frame rate
+record(ai, "$(P)$(R)ResultFrameRate-Mon"){
+  field(DESC, "Resulting frame rate")
+  field(PREC, "6")
+  field(INP, "$(P)$(R)Cam1ResultingFrameRa_RBV CPP")
+}
+
+# Payload size
+record(longin, "$(P)$(R)PayloadSize-Mon"){
+  field(DESC, "Total payload size")
+  field(EGU, "bytes")
+  field(INP, "$(P)$(R)Cam1PayloadSize_RBV CPP")
+}
+
+# Packet size
+record(longout, "$(P)$(R)PacketSize-SP"){
+  field(DESC, "Packet size")
+  field(EGU, "bytes")
+  field(DRVH, "9000") # maximum jumbo frame size
+  field(DRVL, "100")
+  field(VAL, "1500") # default is required for reconnection download to be consistent
+  field(OUT, "$(P)$(R)Cam1GevSCPSPacketSiz PP")
+}
+
+record(longin, "$(P)$(R)PacketSize-RB"){
+  field(DESC, "Packet size RB")
+  field(EGU, "bytes")
+  field(INP, "$(P)$(R)Cam1GevSCPSPacketSiz_RBV CPP")
+}
+
+# Inter-Packet Delay
+record(longout, "$(P)$(R)InterPacketDelay-SP"){
+  field(DESC, "Inter packet delay")
+  field(EGU, "8 ns")
+  field(DRVH, "1000")
+  field(DRVL, "0")
+  field(VAL, "0") # default is required for reconnection download to be consistent
+  field(OUT, "$(P)$(R)Cam1GevSCPD PP")
+}
+
+record(longin, "$(P)$(R)InterPacketDelay-RB"){
+  field(DESC, "Inter packet delay RB")
+  field(EGU, "8 ns")
+  field(INP, "$(P)$(R)Cam1GevSCPD_RBV CPP")
+}
+
+# Frame Transmission Delay
+record(longout, "$(P)$(R)TransmDelay-SP"){
+  field(DESC, "Frame transmission start delay")
+  field(EGU, "8 ns")
+  field(DRVH, "100000")
+  field(DRVL, "0")
+  field(VAL, "0") # default is required for reconnection download to be consistent
+  field(OUT, "$(P)$(R)Cam1GevSCFTD PP")
+}
+
+record(longin, "$(P)$(R)TransmDelay-RB"){
+  field(DESC, "Frame transmission start delay RB")
+  field(EGU, "8 ns")
+  field(INP, "$(P)$(R)Cam1GevSCFTD_RBV CPP")
+}
+
+# Bandwidth Assigned
+record(longin, "$(P)$(R)BwAssigned-Mon"){
+  field(DESC, "Required bandwidth")
+  field(EGU, "bytes")
+  field(INP, "$(P)$(R)Cam1GevSCBWA_RBV CPP")
+}
+
+# Bandwidth Reserver (% of assigned BW)
+record(longout, "$(P)$(R)BwReserve-SP"){
+  field(DESC, "Bandwidth reserve for transm control")
+  field(EGU, "%")
+  field(DRVH, "100")
+  field(DRVL, "0")
+  field(VAL, "10") # default is required for reconnection download to be consistent
+  field(OUT, "$(P)$(R)Cam1GevSCBWR PP")
+}
+
+record(longin, "$(P)$(R)BwReserve-RB"){
+  field(DESC, "Bandwidth reserve for transm control RB")
+  field(EGU, "%")
+  field(INP, "$(P)$(R)Cam1GevSCBWR_RBV CPP")
+}
+
+# Bandwidth Reserve Accumulation
+# This value multiplied by the BW reserve
+# yields the extra BW available for unusual events
+# such as EMI bursts.
+record(longout, "$(P)$(R)BwReserveAccum-SP"){
+  field(DESC, "Bandwidth reserve accumulation")
+  field(DRVH, "50")
+  field(DRVL, "1")
+  field(VAL, "1") # default is required for reconnection download to be consistent
+  field(OUT, "$(P)$(R)Cam1GevSCBWRA PP")
+}
+
+record(longin, "$(P)$(R)BwReserveAccum-RB"){
+  field(DESC, "Bandwidth reserve accumulation RB")
+  field(INP, "$(P)$(R)Cam1GevSCBWRA_RBV CPP")
+}
+
+# Frame Max Jitter
+# Max time that the next frame transm could be
+# delayed due to a burst of resends.
+record(longin, "$(P)$(R)FrameMaxJitter-Mon"){
+  field(DESC, "Max frame delay due to burst of resends")
+  field(EGU, "8 ns")
+  field(INP, "$(P)$(R)Cam1GevSCFJM_RBV CPP")
+}
+
+# Device Max Throughput
+record(longin, "$(P)$(R)MaxThroughput-Mon"){
+  field(DESC, "Max amount of data the cam can generate")
+  field(EGU, "bytes/s")
+  field(INP, "$(P)$(R)Cam1GevSCDMT_RBV CPP")
+}
+
+# Device Current Throughput
+record(longin, "$(P)$(R)CurrentThroughput-Mon"){
+  field(DESC, "Actual amount of data the cam generates")
+  field(EGU, "bytes/s")
+  field(INP, "$(P)$(R)Cam1GevSCDCT_RBV CPP")
+}
+
+######################################################################
+# AREA OF INTEREST
+#
+# Desc: Records for area of interest adjustment.
+
+# AOI offset x
+record(longout, "$(P)$(R)AOIOffsetX-SP"){
+  field(DESC, "AOI start column")
+  field(DRVH, "1279")
+  field(DRVL, "0")
+  field(VAL, "0") # default is required for reconnection download to be consistent
+  field(FLNK, "$(P)$(R)AOIOffsetXCalc")
+}
+
+record(calcout, "$(P)$(R)AOIOffsetXCalc"){
+  field(DESC, "Adjust offset x to allowed steps")
+  field(INPA, "$(P)$(R)AOIOffsetX-SP")
+  field(INPB, "1280")
+  field(INPC, "$(P)$(R)AOIWidth-RB")
+  field(CALC, "D:=A-(A%16);E:=B-C;D<E?D:E")           # Only steps of 16 are allowed. Limit to available area.
+  field(OUT, "$(P)$(R)Cam1OffsetX PP")
+}
+
+record(longin, "$(P)$(R)AOIOffsetX-RB"){
+  field(DESC, "AOI start column RB")
+  field(INP, "$(P)$(R)Cam1OffsetX_RBV CPP")
+}
+
+# AOI offset y
+record(longout, "$(P)$(R)AOIOffsetY-SP"){
+  field(DESC, "AOI start row")
+  field(DRVH, "1023")
+  field(DRVL, "0")
+  field(VAL, "0") # default is required for reconnection download to be consistent
+  field(FLNK, "$(P)$(R)AOIOffsetYCalc")
+}
+
+record(calcout, "$(P)$(R)AOIOffsetYCalc"){
+  field(DESC, "Adjust offset y to allowed value")
+  field(INPA, "$(P)$(R)AOIOffsetY-SP")
+  field(INPB, "1024")
+  field(INPC, "$(P)$(R)AOIHeight-RB")
+  field(CALC, "D:=B-C;A<D?A:D")                        # Limit value to available area
+  field(OUT, "$(P)$(R)Cam1OffsetY PP")
+}
+
+record(longin, "$(P)$(R)AOIOffsetY-RB"){
+  field(DESC, "AOI start row RB")
+  field(INP, "$(P)$(R)Cam1OffsetY_RBV CPP")
+}
+
+# AOI width
+record(longout, "$(P)$(R)AOIWidth-SP"){
+  field(DESC, "AOI width")
+  field(DRVH, "1280")
+  field(DRVL, "1")
+  field(VAL, "1280") # default is required for reconnection download to be consistent
+  field(FLNK, "$(P)$(R)AOIWidthCalc")
+}
+
+record(calcout, "$(P)$(R)AOIWidthCalc"){
+  field(DESC, "Adjust width to allowed steps")
+  field(INPA, "$(P)$(R)AOIWidth-SP")
+  field(INPB, "1280")
+  field(INPC, "$(P)$(R)AOIOffsetX-RB")
+  field(CALC, "D:=A-(A%16);E:=B-C;D<E?D:E")            # Only steps of 16 are allowed. Limit to available area.
+  field(OUT, "$(P)$(R)Cam1Width PP")
+}
+
+record(longin, "$(P)$(R)AOIWidth-RB"){
+  field(DESC, "AOI width RB")
+  field(INP, "$(P)$(R)Cam1Width_RBV CPP")
+}
+
+# AOI height
+record(longout, "$(P)$(R)AOIHeight-SP"){
+  field(DESC, "AOI height")
+  field(DRVH, "1024")
+  field(DRVL, "1")
+  field(VAL, "1024") # default is required for reconnection download to be consistent
+  field(FLNK, "$(P)$(R)AOIHeightCalc")
+}
+
+record(calcout, "$(P)$(R)AOIHeightCalc"){
+  field(DESC, "Adjust hight to allowed value")
+  field(INPA, "$(P)$(R)AOIHeight-SP")
+  field(INPB, "1024")
+  field(INPC, "$(P)$(R)AOIOffsetY-RB")
+  field(CALC, "D:=B-C;A<D?A:D")                        # Limit value to available area.
+  field(OUT, "$(P)$(R)Cam1Height PP")
+}
+
+record(longin, "$(P)$(R)AOIHeight-RB"){
+  field(DESC, "AOI height RB")
+  field(INP, "$(P)$(R)Cam1Height_RBV CPP")
+}
+
+# Center AOI X automatically
+record(bo, "$(P)$(R)AOIAutoCenterX-Sel"){
+  field(DESC, "Auto center AOI along the x axis")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(OUT, "$(P)$(R)Cam1CenterX PP")
+}
+
+record(bi, "$(P)$(R)AOIAutoCenterX-Sts"){
+  field(DESC, "Status of x axis AOI auto centering")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(INP, "$(P)$(R)Cam1CenterX_RBV CPP")
+}
+
+# Center AOI Y automatically
+record(bo, "$(P)$(R)AOIAutoCenterY-Sel"){
+  field(DESC, "Auto center AOI along the y axis")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(OUT, "$(P)$(R)Cam1CenterY PP")
+}
+
+record(bi, "$(P)$(R)AOIAutoCenterY-Sts"){
+  field(DESC, "Status of y axis AOI auto centering")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(INP, "$(P)$(R)Cam1CenterY_RBV CPP")
+}
+
+# Prevent attempts to change AOI size 'on-the-fly'
+record(calc, "$(P)$(R)AOIProtectCalc"){
+  field(DESC, "Cannot change AOI size while acquiring")
+  field(INPA, "$(P)$(R)Enbl-Sts CPP")
+  field(CALC, "A=0?3:12")
+  field(FLNK, "$(P)$(R)AOIProtectSeq")
+}
+
+record(seq, "$(P)$(R)AOIProtectSeq"){
+  field(DESC, "Enable/disable some AOI changes")
+  field(SELM, "Mask")
+  field(SELL, "$(P)$(R)AOIProtectCalc")
+  field(DO1, "1")                                     # Enable AOI width record
+  field(DO2, "1")                                     # Enable AOI height record
+  field(DO3, "0")                                     # Disable AOI width record
+  field(DO4, "0")                                     # Disable AOI height record
+  field(LNK1, "$(P)$(R)AOIWidth-SP.DISV")
+  field(LNK2, "$(P)$(R)AOIHeight-SP.DISV")
+  field(LNK3, "$(P)$(R)AOIWidth-SP.DISV")
+  field(LNK4, "$(P)$(R)AOIHeight-SP.DISV")
+}
+
+######################################################################
+# AUTO FUNCTION
+#
+# Desc: Records related to auto functions.
+
+# Auto adjust the gain value
+
+record(bo, "$(P)$(R)AutoGain-Cmd"){
+  field(DESC, "Auto adjust gain")
+  field(ZNAM, "Off")
+  field(ONAM, "On")
+  field(HIGH, "0.5")
+  field(FLNK, "$(P)$(R)ValidateAutoGain")
+}
+
+record(calcout, "$(P)$(R)ValidateAutoGain"){
+  field(DESC, "Validate auto adjust gain cmd")
+  field(INPA, "$(P)$(R)AutoGain-Cmd")
+  field(CALC, "A=1?1:0")
+  field(OOPT, "When Non-zero")
+  field(OUT, "$(P)$(R)Cam1GainAuto PP")
+}
+
+# Auto Function initialization
+
+record(sseq, "$(P)$(R)InitAutoFunctionAOIs1"){
+  field(DESC, "Init auto function config 1")
+  field(PINI, "YES")
+  field(SELM, "All")
+# ----- select AOI 1
+  field(STR1, "AOI1")
+  field(LNK1, "$(P)$(R)Cam1AutoFunctionAOIS PP")
+  field(WAIT1, "Wait")
+  field(DLY1, "1")
+# ----- assign intensity auto func to AOI 1
+  field(STR2, "Yes")
+  field(LNK2, "$(P)$(R)Cam1AutoFunctionAOIU PP")
+  field(WAIT2, "Wait")
+  field(DLY2, "1")
+# ----- set auto function AOI 1 offset x
+  field(DO3, "0")
+  field(LNK3, "$(P)$(R)Cam1AutoFunctionAOIO PP")
+  field(WAIT3, "Wait")
+  field(DLY3, "1")
+# ----- set auto function AOI 1 offset y
+  field(DO4, "0")
+  field(LNK4, "$(P)$(R)Cam1AutoFunctionAOI0 PP")
+  field(WAIT4, "Wait")
+  field(DLY4, "1")
+# ----- set auto function AOI 1 width
+  field(DO5, "1280")
+  field(LNK5, "$(P)$(R)Cam1AutoFunctionAOIW PP")
+  field(WAIT5, "Wait")
+  field(DLY5, "1")
+# ----- set auto function AOI 1 height
+  field(DO6, "1024")
+  field(LNK6, "$(P)$(R)Cam1AutoFunctionAOIH PP")
+  field(WAIT6, "Wait")
+  field(DLY6, "1")
+# ----- select AOI 2
+  field(STR7, "AOI2")
+  field(LNK7, "$(P)$(R)Cam1AutoFunctionAOIS PP")
+  field(WAIT7, "Wait")
+  field(DLY7, "1")
+# ----- disable intensity auto func for AOI 2
+  field(STR8, "No")
+  field(LNK8, "$(P)$(R)Cam1AutoFunctionAOIU PP")
+  field(WAIT8, "Wait")
+  field(DLY8, "1")
+# ----- set gain auto target value
+  field(DO9, "128")
+  field(LNK9, "$(P)$(R)Cam1AutoTargetValue PP")
+  field(WAIT9, "Wait")
+# ----- set auto gain lower raw limit
+  field(DOA, "136")
+  field(LNKA, "$(P)$(R)Cam1AutoGainRawLower PP")
+  field(WAITA, "Wait")
+  field(FLNK, "$(P)$(R)InitAutoFunctionAOIs2")
+}
+
+record(sseq, "$(P)$(R)InitAutoFunctionAOIs2"){
+  field(DESC, "Init auto function config 2")
+  field(SELM, "All")
+# ----- set auto gain upper raw limit
+  field(DO1, "542")
+  field(LNK1, "$(P)$(R)Cam1AutoGainRawUpper PP")
+}
+
+######################################################################
+# INITIALIZATION
+#
+# Desc: Camera initialization. Enable basic functions,
+# process high level records.
+
+# Initialization Step 1
+record(sseq, "$(P)$(R)InitSeq1"){
+  field(DESC, "Initialization sequence 1")
+  field(SELM, "All")
+# ------- Run at initialization -------
+  field(PINI, "YES")
+# ------- Initialization values -------
+  field(STR1, "Enable")
+  field(STR2, "Enable")
+  field(STR3, "Enable")
+  field(STR4, "Continuous")
+# ------- PVs to initialize -------
+  field(LNK1, "$(P)$(R)Cam1ArrayCallbacks PP")                    # Enable array callbacks for the camera
+  field(LNK2, "$(P)$(R)Image1EnableCallbacks PP")                 # Enable callbacks for the image plugin
+  field(LNK3, "$(P)$(R)Image1ArrayCallbacks PP")                  # Enable array callbacks for the image plugin                  
+  field(LNK4, "$(P)$(R)Cam1ImageMode PP")                         # Set the image mode to 'Continuous'
+# ------- Wait for callback from destination record to proceed -------
+  field(WAIT1, "Wait")                                             # Wait for completion to proceed
+  field(WAIT2, "Wait")                                             # Wait for completion to proceed
+  field(WAIT3, "Wait")                                             # Wait for completion to proceed
+  field(WAIT4, "Wait")                                             # Wait for completion to proceed
+# ------- Delay intervals used for initialization -------
+  field(DLY4, "1.0")                                               # Wait for 1 second before setting the image mode
+  field(FLNK, "$(P)$(R)InitCamSeq1")
+}
+
+# Camera general initialization
+record(sseq, "$(P)$(R)InitCamSeq1"){
+  field(DESC, "Camera initialization sequence 1")
+  field(SELM, "All")
+  field(DO1, "1")
+  field(LNK1, "$(P)$(R)AcqMode-Sel.PROC PP")        # Acquisition Mode
+  field(DLY2, "1")                                  # Delay 1 sec
+  field(LNK2, "$(P)$(R)AcqPeriod-SP.PROC PP")       # Acquisition Period
+  field(DO3, "1")
+  field(LNK3, "$(P)$(R)ExposureMode-Sel.PROC PP")   # Exposure Mode
+  field(DO4, "1")
+  field(DLY4, "1")                                  # Delay 1 sec
+  field(LNK4, "$(P)$(R)ExposureTime-SP.PROC PP")    # Exposure Time
+  field(DO5, "1")
+  field(LNK5, "$(P)$(R)Gain-SP.PROC PP")            # Gain
+  field(DO6, "1")
+  field(LNK6, "$(P)$(R)BlackLevel-SP.PROC PP")      # Black Level
+  field(DO7, "1")
+  field(LNK7, "$(P)$(R)DebouncerPeriod-SP.PROC PP") # Debouncer Period
+  field(DO8, "1")
+  field(LNK8, "$(P)$(R)DataType-Sel.PROC PP")       # Data type
+  field(DO9, "1")
+  field(LNK9, "$(P)$(R)AOIAutoCenterY-Sel.PROC PP") # AOI auto center Y
+  field(DOA, "1")
+  field(LNKA, "$(P)$(R)AOIAutoCenterX-Sel.PROC PP") # AOI auto center X
+  field(FLNK, "$(P)$(R)InitCamSeq2")
+}
+
+record(sseq, "$(P)$(R)InitCamSeq2"){
+  field(DESC, "Camera initialization sequence 2")
+  field(SELM, "All")
+  field(DO1, "1")
+  field(LNK1, "$(P)$(R)PacketSize-SP.PROC PP")      # Packet size
+  field(DO2, "1")
+  field(LNK2, "$(P)$(R)InterPacketDelay-SP.PROC PP") # Inter-packet delay
+  field(DO3, "1")
+  field(LNK3, "$(P)$(R)TransmDelay-SP.PROC PP")     # Transmission delay
+  field(DO4, "1")
+  field(LNK4, "$(P)$(R)BwReserve-SP.PROC PP")       # Bandwidth reserver
+  field(DO5, "1")
+  field(LNK5, "$(P)$(R)BwReserveAccum-SP.PROC PP")  # Bandwidth accumulation
+  field(DO6, "1")
+  field(LNK6, "$(P)$(R)AOIWidth-SP.PROC PP")        # AOI width
+  field(DO7, "1")
+  field(LNK7, "$(P)$(R)AOIHeight-SP.PROC PP")       # AOI height
+  field(DO8, "1")
+  field(LNK8, "$(P)$(R)AOIOffsetX-SP.PROC PP")      # AOI offset X
+  field(DO9, "1")
+  field(LNK9, "$(P)$(R)AOIOffsetY-SP.PROC PP")      # AOI offset Y
+  field(DOA, "1")
+  field(DLYA, "1")                                  # delay 1 sec
+  field(LNKA, "$(P)$(R)Enbl-Sel.PROC PP")           # Enable Acquisition
+  field(FLNK, "$(P)$(R)InitCamSeq3")
+}
+
+record(sseq, "$(P)$(R)InitCamSeq3"){
+  field(DESC, "Camera initialization sequence 3")
+  field(SELM, "All")
+  field(DO1, "0")
+  field(LNK1, "$(P)$(R)AutoReconnect.DISA")         # Enable reconnect record
+  field(DO2, "0")
+  field(LNK2, "$(P)$(R)AutoDownload.DISA")          # Enable auto download record
+  field(DLY3, "0.5")
+  field(STR3, "Finished")
+  field(LNK3, "$(P)$(R)RstDone-Mon PP")             # Update reset status PV
+}
+
+# Statistics initialization
+
+record(sseq, "$(P)$(R)InitStats"){
+  field(DESC, "Initialize statistics plugin")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(STR1, "Enable")
+  field(LNK1, "$(P)$(R)Stats1EnableCallbacks PP")
+  field(WAIT1, "Wait")
+  field(STR2, "Enable")
+  field(LNK2, "$(P)$(R)Stats1ArrayCallbacks PP")
+  field(WAIT2, "Wait")
+  field(DLY2, "1.0")
+  field(STR3, "Yes")
+  field(LNK3, "$(P)$(R)Stats1ComputeCentroid PP")          # Compute centroid = yes
+  field(WAIT3, "Wait")
+  field(DLY3, "1.0")
+}
+
+# DimFei initialization
+
+record(sseq, "$(P)$(R)InitDimFei"){
+  field(DESC, "Initialize DimFei plugin")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(STR1, "Enable")
+  field(LNK1, "$(P)$(R)DimFei1EnableCallbacks PP")
+  field(WAIT1, "Wait")
+  field(STR2, "Enable")
+  field(LNK2, "$(P)$(R)DimFei1ArrayCallbacks PP")
+  field(WAIT2, "Wait")
+  field(DLY2, "1.0")
+  field(STR3, "Yes")
+  field(LNK3, "$(P)$(R)DimFei1ComputeStatistics PP")       # Compute statistics = yes
+  field(WAIT3, "Wait")
+  field(DLY3, "1.0")
+}
+
+# Transform initialization
+
+record(sseq, "$(P)$(R)InitTransf"){
+  field(DESC, "Initialize Transform plugin")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(STR1, "Enable")
+  field(LNK1, "$(P)$(R)Transf1EnableCallbacks PP")
+  field(STR2, "Enable")
+  field(LNK2, "$(P)$(R)Transf1ArrayCallbacks PP")
+}
+
+# ROI initialization
+
+record(sseq, "$(P)$(R)InitSoftROI"){
+  field(DESC, "Initialize ROI plugin")
+  field(SELM, "All")
+  field(PINI, "YES")
+#  field(STR1, "Enable")
+#  field(LNK1, "$(P)$(R)ROI2EnableCallbacks PP")          # Soft ROI enable is controlled by a PV
+#  field(WAIT1, "Wait")
+  field(STR2, "Enable")
+  field(LNK2, "$(P)$(R)ROI2ArrayCallbacks PP")
+  field(WAIT2, "Wait")
+  field(DLY2, "1.0")
+  field(STR3, "Disable")
+  field(LNK3, "$(P)$(R)ROI2EnableZ PP")                   # Disable ROI Z axis
+  field(WAIT3, "Wait")
+  field(DLY3, "1.0")
+  field(STR4, "Enable")
+  field(LNK4, "$(P)$(R)ROI2EnableX PP")                   # Enable ROI X axis
+  field(WAIT4, "Wait")
+  field(DLY4, "1.0")
+  field(STR5, "Enable")
+  field(LNK5, "$(P)$(R)ROI2EnableY PP")                   # Enable ROI Y axis
+  field(WAIT5, "Wait")
+  field(DLY5, "1.0")
+}
+
+# Stats 2 initialization
+
+record(sseq, "$(P)$(R)InitROIStats"){
+  field(DESC, "Initialize ROI statistics")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(STR1, "Enable")
+  field(LNK1, "$(P)$(R)Stats2EnableCallbacks PP")
+  field(WAIT1, "Wait")
+  field(STR2, "Enable")
+  field(LNK2, "$(P)$(R)Stats2ArrayCallbacks PP")
+  field(WAIT2, "Wait")
+  field(DLY2, "1.0")
+  field(STR3, "Yes")
+  field(LNK3, "$(P)$(R)Stats2ComputeCentroid PP")          # Compute centroid = yes (necessary for avg profile)
+  field(WAIT3, "Wait")
+  field(DLY3, "1.0")
+  field(STR4, "Yes")
+  field(LNK4, "$(P)$(R)Stats2ComputeProfiles PP")          # Compute profiles = yes
+  field(WAIT4, "Wait")
+  field(DLY4, "1.0")
+}
+
+# Process initialization
+
+record(sseq, "$(P)$(R)InitProcess1"){
+  field(DESC, "Initialize Process plugin 1")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(STR1, "Enable")
+  field(LNK1, "$(P)$(R)Proc1EnableCallbacks PP")
+  field(STR2, "Enable")
+  field(LNK2, "$(P)$(R)Proc1ArrayCallbacks PP")
+  field(DO3, "0")                               ###########
+  field(LNK3, "$(P)$(R)Proc1LowClip PP")        # Enable low clip for proc plugin 1.
+  field(STR4, "Enable")                         # This avoids background subtraction
+  field(LNK4, "$(P)$(R)Proc1EnableLowClip PP")  # to possibly generate negative pixel values.
+}                                               ###########
+
+record(sseq, "$(P)$(R)InitProcess2"){
+  field(DESC, "Initialize Process plugin 2")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(STR1, "Enable")
+  field(LNK1, "$(P)$(R)Proc2EnableCallbacks PP")
+  field(STR2, "Enable")
+  field(LNK2, "$(P)$(R)Proc2ArrayCallbacks PP")
+}
+
+# Overlay initialization
+
+record(sseq, "$(P)$(R)InitOverlay1"){
+  field(DESC, "Initialize Overlay plugin 1")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(STR1, "Enable")
+  field(LNK1, "$(P)$(R)Over1EnableCallbacks PP")
+  field(STR2, "Enable")
+  field(LNK2, "$(P)$(R)Over1ArrayCallbacks PP")
+}
+
+record(sseq, "$(P)$(R)InitOverlay1A"){ # overlay 1 layer A - ndstats centroid
+  field(DESC, "Initialize Overlay 1 layer A")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(DO1, "$(MARK_WIDTH)")                      # marker x width
+  field(LNK1, "$(P)$(R)Over1AWidthX PP")
+  field(DO2, "$(MARK_WIDTH)")                      # marker y width
+  field(LNK2, "$(P)$(R)Over1AWidthY PP")
+  field(STR3, "Cross")                             # marker shape
+  field(LNK3, "$(P)$(R)Over1AShape PP")
+  field(STR4, "Set")                               # maker draw mode
+  field(LNK4, "$(P)$(R)Over1ADrawMode PP")
+}
+
+record(sseq, "$(P)$(R)InitOverlay1B"){ # overlay 1 layer B - dimfei centroid
+  field(DESC, "Initialize Overlay 1 layer B")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(DO1, "$(MARK_WIDTH)")                      # marker x width
+  field(LNK1, "$(P)$(R)Over1BWidthX PP")
+  field(DO2, "$(MARK_WIDTH)")                      # marker y width
+  field(LNK2, "$(P)$(R)Over1BWidthY PP")
+  field(STR3, "Cross")                             # marker shape
+  field(LNK3, "$(P)$(R)Over1BShape PP")
+  field(STR4, "Set")                               # maker draw mode
+  field(LNK4, "$(P)$(R)Over1ADrawMode PP")
+}
+
+record(sseq, "$(P)$(R)InitOverlay1C"){ # overlay 1 layer C - calibration center
+  field(DESC, "Initialize Overlay 1 layer C")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(DO1, "$(MARK_WIDTH)")                      # marker x width
+  field(LNK1, "$(P)$(R)Over1CWidthX PP")
+  field(DO2, "$(MARK_WIDTH)")                      # marker y width
+  field(LNK2, "$(P)$(R)Over1CWidthY PP")
+  field(STR3, "Cross")                             # marker shape
+  field(LNK3, "$(P)$(R)Over1CShape PP")
+  field(STR4, "Set")                               # maker draw mode
+  field(LNK4, "$(P)$(R)Over1CDrawMode PP")
+}
+
+record(sseq, "$(P)$(R)InitOverlay1D"){ # overlay 1 layer D - real center
+  field(DESC, "Initialize Overlay 1 layer D")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(DO1, "$(MARK_WIDTH)")                      # marker x width
+  field(LNK1, "$(P)$(R)Over1DWidthX PP")
+  field(DO2, "$(MARK_WIDTH)")                      # marker y width
+  field(LNK2, "$(P)$(R)Over1DWidthY PP")
+  field(STR3, "Cross")                             # marker shape
+  field(LNK3, "$(P)$(R)Over1DShape PP")
+  field(STR4, "Set")                               # maker draw mode
+  field(LNK4, "$(P)$(R)Over1DDrawMode PP")
+}
+
+# ROI 1 (Main image ROI) initialization
+
+record(sseq, "$(P)$(R)InitSoftROI1"){
+  field(DESC, "Initialize ROI1 plugin")
+  field(SELM, "All")
+  field(PINI, "YES")
+  field(STR1, "Enable")
+  field(LNK1, "$(P)$(R)ROI1EnableX PP")
+  field(STR2, "Enable")
+  field(LNK2, "$(P)$(R)ROI1EnableY PP")
+  field(STR3, "Disable")
+  field(LNK3, "$(P)$(R)ROI1EnableZ PP")
+  field(DO4, "1")
+  field(LNK4, "$(P)$(R)ROI1BinX PP")
+  field(DO5, "1")
+  field(LNK5, "$(P)$(R)ROI1BinY PP")
+  field(STR6, "Automatic")
+  field(LNK6, "$(P)$(R)ROI1DataTypeOut PP")
+  field(STR7, "Enable")
+  field(LNK7, "$(P)$(R)ROI1EnableCallbacks PP")
+  field(STR8, "Enable")
+  field(LNK8, "$(P)$(R)ROI1ArrayCallbacks PP")
+  field(FLNK, "$(P)$(R)InitSoftROI1Seq2")
+}
+
+record(sseq, "$(P)$(R)InitSoftROI1Seq2"){
+  field(DESC, "Initialize ROI1 plugin")
+  field(SELM, "All")
+  field(STR1, "No")
+  field(LNK1, "$(P)$(R)ROI1AutoSizeX PP")
+  field(STR2, "No")
+  field(LNK2, "$(P)$(R)ROI1AutoSizeY PP")
+  field(DO3, "1")
+  field(LNK3, "$(P)$(R)ROI1SizeX.DRVL PP")
+  field(DO4, "1")
+  field(LNK4, "$(P)$(R)ROI1SizeY.DRVL PP")
+  field(DO5, "0")
+  field(LNK5, "$(P)$(R)ROI1MinX.DRVL PP")
+  field(DO6, "0")
+  field(LNK6, "$(P)$(R)ROI1MinY.DRVL PP")
+}
+
+######################################################################
+# DEVICE INFORMATION PARAMETERS
+#
+# Desc: General device information.
+
+# Vendor
+
+record(stringin, "$(P)$(R)DeviceVendorName-Cte"){
+  field(DESC, "Device vendor name")
+  field(INP, "$(P)$(R)Cam1DeviceVendorName_RBV CPP")
+}
+
+# Model
+record(stringin, "$(P)$(R)DeviceModelName-Cte"){
+  field(DESC, "Device model name")
+  field(INP, "$(P)$(R)Cam1DeviceModelName_RBV CPP")
+}
+
+# Camera Version
+record(stringin, "$(P)$(R)DeviceVersion-Cte"){
+  field(DESC, "Device version")
+  field(INP, "$(P)$(R)Cam1DeviceVersion_RBV CPP")
+}
+
+# Firmware version
+record(stringin, "$(P)$(R)DeviceFirmwareVersion-Cte"){
+  field(DESC, "Device firmware version")
+  field(INP, "$(P)$(R)Cam1DeviceFirmwareVe_RBV CPP")
+}
+
+# Device ID
+record(stringin, "$(P)$(R)DeviceID-Cte"){
+  field(DESC, "Device ID")
+  field(INP, "$(P)$(R)Cam1DeviceID_RBV CPP")
+}
+
+# Sensor Width
+record(stringin, "$(P)$(R)SensorWidth-Cte"){
+  field(DESC, "Sensor width")
+  field(INP, "$(P)$(R)Cam1SensorWidth_RBV CPP")
+}
+
+# Sensor Height
+record(stringin, "$(P)$(R)SensorHeight-Cte"){
+  field(DESC, "Sensor height")
+  field(INP, "$(P)$(R)Cam1SensorHeight_RBV CPP")
+}
+
+######################################################################
+# STATISTICS
+#
+# Desc: Aliases for centroid statistics records.
+
+# Centroid stats scale and offset conversion parameters
+
+record(ao, "$(P)$(R)ScaleFactorX-SP"){
+  field(DESC, "X axis scale for centroid stats")
+  field(PINI, "YES")
+  field(PREC, "6")
+  field(DRVH, "1000000")
+  field(DRVL, "-1000000")
+  field(VAL, "1")
+  field(FLNK, "$(P)$(R)ScaleFactorX-RB")  
+}
+
+record(ai, "$(P)$(R)ScaleFactorX-RB"){
+  field(DESC, "X axis scale for centroid RB")
+  field(PREC, "6")
+  field(INP, "$(P)$(R)ScaleFactorX-SP")  
+}
+
+record(ao, "$(P)$(R)ScaleFactorY-SP"){
+  field(DESC, "Y axis scale for centroid stats")
+  field(PINI, "YES")
+  field(PREC, "6")
+  field(DRVH, "1000000")
+  field(DRVL, "-1000000")
+  field(VAL, "1")
+  field(FLNK, "$(P)$(R)ScaleFactorY-RB")  
+}
+
+record(ai, "$(P)$(R)ScaleFactorY-RB"){
+  field(DESC, "Y axis scale for centroid RB")
+  field(PREC, "6")
+  field(INP, "$(P)$(R)ScaleFactorY-SP")  
+}
+
+record(ao, "$(P)$(R)CenterOffsetX-SP"){
+  field(DESC, "X axis offset for centroid stats")
+  field(PINI, "YES")
+  field(PREC, "0")
+  field(DRVH, "1000000")
+  field(DRVL, "0")
+  field(VAL, "0")
+  field(FLNK, "$(P)$(R)CenterOffsetX-RB")  
+}
+
+record(ai, "$(P)$(R)CenterOffsetX-RB"){
+  field(DESC, "X axis offset for centroid stats RB")
+  field(PREC, "0")
+  field(INP, "$(P)$(R)CenterOffsetX-SP")  
+}
+
+record(ao, "$(P)$(R)CenterOffsetY-SP"){
+  field(DESC, "Y axis offset for centroid stats")
+  field(PINI, "YES")
+  field(PREC, "0")
+  field(DRVH, "1000000")
+  field(DRVL, "0")
+  field(VAL, "0")
+  field(FLNK, "$(P)$(R)CenterOffsetY-RB")  
+}
+
+record(ai, "$(P)$(R)CenterOffsetY-RB"){
+  field(DESC, "Y axis offset for centroid stats RB")
+  field(PREC, "0")
+  field(INP, "$(P)$(R)CenterOffsetY-SP")  
+}
+
+record(ao, "$(P)$(R)ThetaOffset-SP"){
+  field(DESC, "Theta offset for centroid stats")
+  field(PINI, "YES")
+  field(PREC, "6")
+  field(DRVH, "90")
+  field(DRVL, "-90")
+  field(VAL, "0")
+  field(FLNK, "$(P)$(R)ThetaOffset-RB")  
+}
+
+record(ai, "$(P)$(R)ThetaOffset-RB"){
+  field(DESC, "Theta offset for centroid stats RB")
+  field(PREC, "6")
+  field(INP, "$(P)$(R)ThetaOffset-SP")  
+}
+
+record(ao, "$(P)$(R)CalPosCenterX-SP"){
+  field(DESC, "Center X offset to nominal beam")
+  field(PINI, "YES")
+  field(PREC, "6")
+  field(DRVH, "1000000")
+  field(DRVL, "-1000000")
+  field(VAL, "0")
+  field(FLNK, "$(P)$(R)CalPosCenterX-RB")  
+}
+
+record(ai, "$(P)$(R)CalPosCenterX-RB"){
+  field(DESC, "Center X offset to nominal beam RB")
+  field(PREC, "6")
+  field(INP, "$(P)$(R)CalPosCenterX-SP")  
+}
+
+record(ao, "$(P)$(R)CalPosCenterY-SP"){
+  field(DESC, "Center Y offset to nominal beam")
+  field(PINI, "YES")
+  field(PREC, "6")
+  field(DRVH, "1000000")
+  field(DRVL, "-1000000")
+  field(VAL, "0")
+  field(FLNK, "$(P)$(R)CalPosCenterY-RB")  
+}
+
+record(ai, "$(P)$(R)CalPosCenterY-RB"){
+  field(DESC, "Center Y offset to nominal beam RB")
+  field(PREC, "6")
+  field(INP, "$(P)$(R)CalPosCenterY-SP")  
+}
+
+record(calc, "$(P)$(R)RealCenterX-Mon"){
+  field(DESC, "Real vacuum chamber center X")
+  field(INPA, "$(P)$(R)CalPosCenterX-RB CPP") # cal. center x
+  field(INPB, "$(P)$(R)ScaleFactorX-RB CPP")  # scale factor x (pixel -> mm)
+  field(INPC, "$(P)$(R)CenterOffsetX-RB CPP") # offset in pixels of cal. center x
+  field(CALC, "B=0?0:C-(A/B)")
+}
+
+record(calc, "$(P)$(R)RealCenterY-Mon"){
+  field(DESC, "Real vacuum chamber center Y")
+  field(INPA, "$(P)$(R)CalPosCenterY-RB CPP") # cal. center y
+  field(INPB, "$(P)$(R)ScaleFactorY-RB CPP")  # scale factor y (pixel -> mm)
+  field(INPC, "$(P)$(R)CenterOffsetY-RB CPP") # offset in pixels of cal. center y
+  field(CALC, "B=0?0:C-(A/B)")
+}
+
+## NDStats (centroid)
+
+alias(  "$(P)$(R)Stats1CentroidThreshold",         "$(P)$(R)CentroidThresholdNDStats-SP") # NDStats centroid threshold (set)
+alias(  "$(P)$(R)Stats1CentroidThreshold_RBV",     "$(P)$(R)CentroidThresholdNDStats-RB") # NDStats centroid threshold (read)
+alias(  "$(P)$(R)Stats1CentroidX_RBV",             "$(P)$(R)CenterXNDStatsRaw-Mon") # NDStats centroid X monitor
+alias(  "$(P)$(R)Stats1CentroidY_RBV",             "$(P)$(R)CenterYNDStatsRaw-Mon") # NDStats centroid Y monitor
+alias(  "$(P)$(R)Stats1SigmaX_RBV",                "$(P)$(R)SigmaXNDStatsRaw-Mon")  # NDStats sigma X monitor
+alias(  "$(P)$(R)Stats1SigmaY_RBV",                "$(P)$(R)SigmaYNDStatsRaw-Mon")  # NDStats sigma Y monitor
+alias(  "$(P)$(R)Stats1SigmaXY_RBV",               "$(P)$(R)SigmaXYNDStats-Mon") # NDStats sigma XY monitor
+alias(  "$(P)$(R)Stats1Orientation_RBV",           "$(P)$(R)ThetaNDStatsRaw-Mon")   # NDStats orientation (theta) monitor
+
+# Scale and offset conversion of NDStats centroid stats
+
+record(calc, "$(P)$(R)CenterXNDStats-Mon"){
+  field(DESC, "Converted NDStats center X")
+  field(PREC, "6")
+  field(EGU, "mm")
+  field(INPA, "$(P)$(R)Stats1CentroidX_RBV CPP")
+  field(INPB, "$(P)$(R)ScaleFactorX-RB")
+  field(INPC, "$(P)$(R)CenterOffsetX-RB")
+  field(INPD, "$(P)$(R)CalPosCenterX-RB")
+  field(INPE, "$(P)$(R)SoftROIOffsetX-RB")
+  field(CALC, "((A-C+E) * B) + D")
+}
+
+record(calc, "$(P)$(R)CenterYNDStats-Mon"){
+  field(DESC, "Converted NDStats center Y")
+  field(PREC, "6")
+  field(EGU, "mm")
+  field(INPA, "$(P)$(R)Stats1CentroidY_RBV CPP")
+  field(INPB, "$(P)$(R)ScaleFactorY-RB")
+  field(INPC, "$(P)$(R)CenterOffsetY-RB")
+  field(INPD, "$(P)$(R)CalPosCenterY-RB")
+  field(INPE, "$(P)$(R)SoftROIOffsetY-RB")
+  field(CALC, "((A-C+E) * B) + D")
+}
+
+record(calc, "$(P)$(R)SigmaXNDStats-Mon"){
+  field(DESC, "Converted NDStats sigma X")
+  field(PREC, "6")
+  field(EGU, "mm")
+  field(INPA, "$(P)$(R)Stats1SigmaX_RBV CPP")
+  field(INPB, "$(P)$(R)ScaleFactorX-RB")
+  field(CALC, "abs(A*B)")
+}
+
+record(calc, "$(P)$(R)SigmaYNDStats-Mon"){
+  field(DESC, "Converted NDStats sigma Y")
+  field(PREC, "6")
+  field(EGU, "mm")
+  field(INPA, "$(P)$(R)Stats1SigmaY_RBV CPP")
+  field(INPB, "$(P)$(R)ScaleFactorY-RB")
+  field(CALC, "abs(A*B)")
+}
+
+record(calc, "$(P)$(R)ThetaNDStats-Mon"){
+  field(DESC, "Converted NDStats theta")
+  field(PREC, "6")
+  field(EGU, "degrees")
+  field(INPA, "$(P)$(R)Stats1Orientation_RBV CPP")
+  field(INPB, "$(P)$(R)ThetaOffset-RB")
+  field(CALC, "A-B")
+}
+
+## DimFei (centroid)
+
+alias( "$(P)$(R)DimFei1CentroidX_RBV",             "$(P)$(R)CenterXDimFeiRaw-Mon") # DimFei centroid X monitor
+alias( "$(P)$(R)DimFei1CentroidY_RBV",             "$(P)$(R)CenterYDimFeiRaw-Mon") # DimFei centroid Y monitor
+alias( "$(P)$(R)DimFei1SigmaX_RBV",                "$(P)$(R)SigmaXDimFeiRaw-Mon")  # DimFei sigma X monitor
+alias( "$(P)$(R)DimFei1SigmaY_RBV",                "$(P)$(R)SigmaYDimFeiRaw-Mon")  # DimFei sigma Y monitor
+alias( "$(P)$(R)DimFei1Orientation_RBV",           "$(P)$(R)ThetaDimFeiRaw-Mon")      # DimFei orientation (theta) monitor
+
+# Scale and offset conversion of DimFei centroid stats
+
+record(calc, "$(P)$(R)CenterXDimFei-Mon"){
+  field(DESC, "Converted DimFei center X")
+  field(PREC, "6")
+  field(EGU, "mm")
+  field(INPA, "$(P)$(R)DimFei1CentroidX_RBV CPP")
+  field(INPB, "$(P)$(R)ScaleFactorX-RB")
+  field(INPC, "$(P)$(R)CenterOffsetX-RB")
+  field(INPD, "$(P)$(R)CalPosCenterX-RB")
+  field(INPE, "$(P)$(R)SoftROIOffsetX-RB")
+  field(CALC, "((A-C+E) * B) + D")
+}
+
+record(calc, "$(P)$(R)CenterYDimFei-Mon"){
+  field(DESC, "Converted DimFei center Y")
+  field(PREC, "6")
+  field(EGU, "mm")
+  field(INPA, "$(P)$(R)DimFei1CentroidY_RBV CPP")
+  field(INPB, "$(P)$(R)ScaleFactorY-RB")
+  field(INPC, "$(P)$(R)CenterOffsetY-RB")
+  field(INPD, "$(P)$(R)CalPosCenterY-RB")
+  field(INPE, "$(P)$(R)SoftROIOffsetY-RB")
+  field(CALC, "((A-C+E) * B) + D")
+}
+
+record(calc, "$(P)$(R)SigmaXDimFei-Mon"){
+  field(DESC, "Converted DimFei sigma X")
+  field(PREC, "6")
+  field(EGU, "mm")
+  field(INPA, "$(P)$(R)DimFei1SigmaX_RBV CPP")
+  field(INPB, "$(P)$(R)ScaleFactorX-RB")
+  field(CALC, "abs(A*B)")
+}
+
+record(calc, "$(P)$(R)SigmaYDimFei-Mon"){
+  field(DESC, "Converted DimFei sigma Y")
+  field(PREC, "6")
+  field(EGU, "mm")
+  field(INPA, "$(P)$(R)DimFei1SigmaY_RBV CPP")
+  field(INPB, "$(P)$(R)ScaleFactorY-RB")
+  field(CALC, "abs(A*B)")
+}
+
+record(calc, "$(P)$(R)ThetaDimFei-Mon"){
+  field(DESC, "Converted DimFei theta")
+  field(PREC, "6")
+  field(EGU, "degrees")
+  field(INPA, "$(P)$(R)DimFei1Orientation_RBV CPP")
+  field(INPB, "$(P)$(R)ThetaOffset-RB")
+  field(CALC, "A-B")
+}
+
+######################################################################
+# OTHER PLUGINS
+#
+# Desc: Plugins PV names aliasing.
+
+## ROI (used by stats 2)
+
+alias( "$(P)$(R)ROI2EnableCallbacks",              "$(P)$(R)ProfileEnbl-Sel")      # ROI for profile stats enable (set)
+alias( "$(P)$(R)ROI2EnableCallbacks_RBV",          "$(P)$(R)ProfileEnbl-Sts")      # ROI for profile stats enable (read)
+alias( "$(P)$(R)ROI2MinX",                         "$(P)$(R)ProfileROIOffsetX-SP") # ROI offset in the X axis (set)
+alias( "$(P)$(R)ROI2MinX_RBV",                     "$(P)$(R)ProfileROIOffsetX-RB") # ROI offset in the X axis (read)
+alias( "$(P)$(R)ROI2MinY",                         "$(P)$(R)ProfileROIOffsetY-SP") # ROI offset in the Y axis (set)
+alias( "$(P)$(R)ROI2MinY_RBV",                     "$(P)$(R)ProfileROIOffsetY-RB") # ROI offset in the Y axis (read)
+alias( "$(P)$(R)ROI2SizeX",                        "$(P)$(R)ProfileROIWidth-SP")   # ROI size in the X axis (set)
+alias( "$(P)$(R)ROI2SizeX_RBV",                    "$(P)$(R)ProfileROIWidth-RB")   # ROI size in the X axis (read)
+alias( "$(P)$(R)ROI2SizeY",                        "$(P)$(R)ProfileROIHeight-SP")  # ROI size in the Y axis (set)
+alias( "$(P)$(R)ROI2SizeY_RBV",                    "$(P)$(R)ProfileROIHeight-RB")  # ROI size in the Y axis (read) 
+
+## Profile stats for ROI (NDStats2)
+
+alias( "$(P)$(R)Stats2CursorX",                    "$(P)$(R)ProfileCursorX-SP") # Cursor X for profile computation (set)
+alias( "$(P)$(R)Stats2CursorX_RBV",                "$(P)$(R)ProfileCursorX-RB") # Cursor X for profile computation (read)
+alias( "$(P)$(R)Stats2CursorY",                    "$(P)$(R)ProfileCursorY-SP") # Cursor Y for profile computation (set)
+alias( "$(P)$(R)Stats2CursorY_RBV",                "$(P)$(R)ProfileCursorY-RB") # Cursor Y for profile computation (read)
+alias( "$(P)$(R)Stats2ProfileCursorX_RBV",         "$(P)$(R)ProfileH-Mon")      # Horizontal profile at cursor Y (monitor)
+alias( "$(P)$(R)Stats2ProfileCursorY_RBV",         "$(P)$(R)ProfileV-Mon")      # Vertical profile at cursor X (monitor)
+alias( "$(P)$(R)Stats2ProfileAverageX_RBV",        "$(P)$(R)ProfileHAvg-Mon")   # Average horizontal profile (monitor)
+alias( "$(P)$(R)Stats2ProfileAverageY_RBV",        "$(P)$(R)ProfileVAvg-Mon")   # Average vertical profile (monitor)
+
+## Transform (mirror and rotate)
+
+alias( "$(P)$(R)Transf1Type",                      "$(P)$(R)TransformType-Sel") # Image transformation type, e.g., Mirror (set)
+alias( "$(P)$(R)Transf1Type",                      "$(P)$(R)TransformType-Sts") # Image transformation type, e.g., Mirror (read)
+
+## Process 1 (background subtraction)
+
+# Background subtraction
+
+record(bo, "$(P)$(R)SaveBG-Cmd"){         # Save most recent image as background (cmd)
+  field(DESC, "Save last image as background")
+  field(ZNAM, "Off")
+  field(ONAM, "On")
+  field(HIGH, "0.5")
+  field(FLNK, "$(P)$(R)SaveBGCalc")
+}
+
+record(calcout, "$(P)$(R)SaveBGCalc"){
+  field(DESC, "Validate save bkgd command")
+  field(INPA, "$(P)$(R)SaveBG-Cmd")
+  field(CALC, "A")
+  field(OOPT, "When Non-zero")
+  field(OUT, "$(P)$(R)Proc1SaveBackground PP")
+}
+
+alias( "$(P)$(R)Proc1ValidBackground_RBV",         "$(P)$(R)ValidBG-Mon")           # Valid background flag (monitor)
+alias( "$(P)$(R)Proc1EnableBackground",            "$(P)$(R)EnblBGSubtraction-Sel") # Enable background subtraction (set)
+alias( "$(P)$(R)Proc1EnableBackground_RBV",        "$(P)$(R)EnblBGSubtraction-Sts") # Enable background subtraction (read)
+
+## Process 2 (scale and offset, clipping)
+
+# Pixel intensity offset and scale
+
+alias( "$(P)$(R)Proc2EnableOffsetScale",           "$(P)$(R)EnblOffsetScale-Sel") # Enable offset and scaling of pixels (set)
+alias( "$(P)$(R)Proc2EnableOffsetScale_RBV",       "$(P)$(R)EnblOffsetScale-Sts") # Enable offset and scaling of pixels (read)
+
+record(bo, "$(P)$(R)AutoOffsetScale-Cmd"){  # Auto adjust pixel intesity offset and scale cmd
+  field(DESC, "Auto adjust pixel value offset and scale")
+  field(ZNAM, "Off")
+  field(ONAM, "On")
+  field(HIGH, "0.5")
+  field(FLNK, "$(P)$(R)AutoOffsetScaleCalc")
+}
+
+record(calcout, "$(P)$(R)AutoOffsetScaleCalc"){
+  field(DESC, "Validate auto offset and scale")
+  field(INPA, "$(P)$(R)AutoOffsetScale-Cmd")
+  field(CALC, "A")
+  field(OUT, "$(P)$(R)Proc2AutoOffsetScale PP")
+}
+
+alias( "$(P)$(R)Proc2Scale",                       "$(P)$(R)PixelScale-SP")  # Pixel intensity scale factor (set)
+alias( "$(P)$(R)Proc2Scale_RBV",                   "$(P)$(R)PixelScale-RB")  # Pixel intensity scale factor (read)
+alias( "$(P)$(R)Proc2Offset",                      "$(P)$(R)PixelOffset-SP") # Pixel intensity offset (read)
+alias( "$(P)$(R)Proc2Offset_RBV",                  "$(P)$(R)PixelOffset-RB") # Pixel intensity offset (read)
+
+# Pixel intensity clipping
+
+alias( "$(P)$(R)Proc2EnableLowClip",               "$(P)$(R)EnblLowClip-Sel")  # Enable clipping to minimum value (set)
+alias( "$(P)$(R)Proc2EnableLowClip_RBV",           "$(P)$(R)EnblLowClip-Sts")  # Enable clipping to minimum value (read)
+alias( "$(P)$(R)Proc2LowClip",                     "$(P)$(R)LowClip-SP")       # Minimum allowed array value (set)
+alias( "$(P)$(R)Proc2LowClip_RBV",                 "$(P)$(R)LowClip-RB")       # Minimum allowed array value (read)
+alias( "$(P)$(R)Proc2EnableHighClip",              "$(P)$(R)EnblHighClip-Sel") # Enable clipping to maximum value (set)
+alias( "$(P)$(R)Proc2EnableHighClip_RBV",          "$(P)$(R)EnblHighClip-Sts") # Enable clipping to maximum value (read)
+alias( "$(P)$(R)Proc2HighClip",                    "$(P)$(R)HighClip-SP")      # Maximum allowed array value (set)
+alias( "$(P)$(R)Proc2HighClip_RBV",                "$(P)$(R)HighClip-RB")      # Maximum allowed array value (read)
+
+# Overlay A - Centroid Position from NDStats
+
+alias( "$(P)$(R)Over1AUse",                        "$(P)$(R)NDStatsMarkEnbl-Sel") # Enable NDStats centroid marker (set)
+alias( "$(P)$(R)Over1AUse_RBV",                    "$(P)$(R)NDStatsMarkEnbl-Sts") # NDStats centroid marker status (read)
+
+record(longout, "$(P)$(R)NDStatsMarkColor-SP"){     # NDStats centroid marker color SP
+  field(DESC, "NDStats centroid marker color")
+  field(PINI, "YES")
+  field(EGU, "%")
+  field(DRVH, "100")
+  field(DRVL, "0")
+  field(FLNK, "$(P)$(R)NDStatsMarkColorCalc")
+}
+
+record(calcout, "$(P)$(R)NDStatsMarkColorCalc"){
+  field(DESC, "NDStats centroid marker color calc")
+  field(INPA, "$(P)$(R)NDStatsMarkColor-SP")
+  field(INPB, "$(P)$(R)DataType-Sts CPP") # must recalc if bit depth changes
+  # IF (bit_depth = 8 bit) => OUT = A/100 * 255
+  # ELSE => OUT = A/100 * 65535
+  field(CALC, "B=0?A*0.01*255:A*0.01*65535")
+  field(OUT, "$(P)$(R)Over1AGreen PP")
+}
+
+record(calc, "$(P)$(R)NDStatsMarkColor-RB"){        # NDStats centroid marker color RB
+  field(DESC, "NDStats centroid marker color RB")
+  field(EGU, "%")
+  field(INPA, "$(P)$(R)Over1AGreen_RBV CPP")
+  field(INPB, "$(P)$(R)DataType-Sts")
+  # IF (bit_depth = 8 bit) => OUT = A*100 / 255
+  # ELSE => OUT = A*100 / 65535
+  field(CALC, "B=0?A*100/255:A*100/65535")
+}
+
+record(longout, "$(P)$(R)NDStatsMarkSize-SP"){     # NDStats centroid marker size SP
+  field(DESC, "NDStats centroid marker size")
+  field(PINI, "YES")
+  field(EGU, "pixels")
+  field(FLNK, "$(P)$(R)NDStatsMarkSizeSet")
+}
+
+record(dfanout, "$(P)$(R)NDStatsMarkSizeSet"){
+  field(DESC, "NDStats centroid marker size set")
+  field(OMSL, "closed_loop")
+  field(SELM, "All")
+  field(DOL, "$(P)$(R)NDStatsMarkSize-SP")
+  field(OUTA, "$(P)$(R)Over1ASizeX PP")
+  field(OUTB, "$(P)$(R)Over1ASizeY PP")
+}
+
+record(calc, "$(P)$(R)NDStatsMarkSize-RB"){        # NDStats centroid marker size RB
+  field(DESC, "NDStats centroid marker size RB")
+  field(EGU, "pixels")
+  field(INPA, "$(P)$(R)Over1ASizeX_RBV CPP")
+  field(INPB, "$(P)$(R)Over1ASizeY_RBV CPP")
+  field(CALC, "A>B?A:B")
+}
+
+record(seq, "$(P)$(R)NDStatsMarkUpdate"){          # Update NDStats marker position
+  field(DESC, "Update NDStats marker position")
+  field(SELM, "All")
+  field(DOL1, "$(P)$(R)CenterXNDStatsRaw-Mon CPP")
+  field(LNK1, "$(P)$(R)Over1ACenterX PP")
+  field(DOL2, "$(P)$(R)CenterYNDStatsRaw-Mon CPP")
+  field(LNK2, "$(P)$(R)Over1ACenterY PP")
+}
+
+# Overlay B - Centroid Position from DimFei
+
+alias( "$(P)$(R)Over1BUse",                        "$(P)$(R)DimFeiMarkEnbl-Sel") # Enable DimFei centroid marker (set)
+alias( "$(P)$(R)Over1BUse_RBV",                    "$(P)$(R)DimFeiMarkEnbl-Sts") # DimFei centroid marker status (read)
+
+record(longout, "$(P)$(R)DimFeiMarkColor-SP"){     # DimFei centroid marker color SP
+  field(DESC, "DimFei centroid marker color")
+  field(PINI, "YES")
+  field(EGU, "%")
+  field(DRVH, "100")
+  field(DRVL, "0")
+  field(FLNK, "$(P)$(R)DimFeiMarkColorCalc")
+}
+
+record(calcout, "$(P)$(R)DimFeiMarkColorCalc"){
+  field(DESC, "DimFei centroid marker color calc")
+  field(INPA, "$(P)$(R)DimFeiMarkColor-SP")
+  field(INPB, "$(P)$(R)DataType-Sts CPP") # must recalc if bit depth changes
+  # IF (bit_depth = 8 bit) => OUT = A/100 * 255
+  # ELSE => OUT = A/100 * 65535
+  field(CALC, "B=0?A*0.01*255:A*0.01*65535")
+  field(OUT, "$(P)$(R)Over1BGreen PP")
+}
+
+record(calc, "$(P)$(R)DimFeiMarkColor-RB"){        # DimFei centroid marker color RB
+  field(DESC, "DimFei centroid marker color RB")
+  field(EGU, "%")
+  field(INPA, "$(P)$(R)Over1BGreen_RBV CPP")
+  field(INPB, "$(P)$(R)DataType-Sts")
+  # IF (bit_depth = 8 bit) => OUT = A*100 / 255
+  # ELSE => OUT = A*100 / 65535
+  field(CALC, "B=0?A*100/255:A*100/65535")
+}
+
+record(longout, "$(P)$(R)DimFeiMarkSize-SP"){      # DimFei centroid marker size SP
+  field(DESC, "DimFei centroid marker size")
+  field(PINI, "YES")
+  field(EGU, "pixels")
+  field(FLNK, "$(P)$(R)DimFeiMarkSizeSet")
+}
+
+record(dfanout, "$(P)$(R)DimFeiMarkSizeSet"){
+  field(DESC, "DimFei centroid marker size set")
+  field(OMSL, "closed_loop")
+  field(SELM, "All")
+  field(DOL, "$(P)$(R)DimFeiMarkSize-SP")
+  field(OUTA, "$(P)$(R)Over1BSizeX PP")
+  field(OUTB, "$(P)$(R)Over1BSizeY PP")
+}
+
+record(calc, "$(P)$(R)DimFeiMarkSize-RB"){         # DimFei centroid marker size RB
+  field(DESC, "DimFei centroid marker size RB")
+  field(EGU, "pixels")
+  field(INPA, "$(P)$(R)Over1BSizeX_RBV CPP")
+  field(INPB, "$(P)$(R)Over1BSizeY_RBV CPP")
+  field(CALC, "A>B?A:B")
+}
+
+record(seq, "$(P)$(R)DimFeiMarkUpdate"){          # Update DimFei marker position
+  field(DESC, "Update DimFei marker position")
+  field(SELM, "All")
+  field(DOL1, "$(P)$(R)CenterXDimFeiRaw-Mon CPP")
+  field(LNK1, "$(P)$(R)Over1BCenterX PP")
+  field(DOL2, "$(P)$(R)CenterXDimFeiRaw-Mon CPP")
+  field(LNK2, "$(P)$(R)Over1BCenterY PP")
+}
+
+# Overlay C - Calibration Screen Center Marker
+
+alias( "$(P)$(R)Over1CUse",                        "$(P)$(R)CalCenterMarkEnbl-Sel") # Enable calibration screen center marker (set)
+alias( "$(P)$(R)Over1CUse_RBV",                    "$(P)$(R)CalCenterMarkEnbl-Sts") # Cal. screen center marker status (read)
+
+record(longout, "$(P)$(R)CalCenterMarkColor-SP"){  # Cal. screen center marker color SP
+  field(DESC, "Cal. screen center marker color")
+  field(PINI, "YES")
+  field(EGU, "%")
+  field(DRVH, "100")
+  field(DRVL, "0")
+  field(FLNK, "$(P)$(R)CalCenterMarkColorCalc")
+}
+
+record(calcout, "$(P)$(R)CalCenterMarkColorCalc"){
+  field(DESC, "Cal. screen center marker color calc")
+  field(INPA, "$(P)$(R)CalCenterMarkColor-SP")
+  field(INPB, "$(P)$(R)DataType-Sts CPP") # must recalc if bit depth changes
+  # IF (bit_depth = 8 bit) => OUT = A/100 * 255
+  # ELSE => OUT = A/100 * 65535
+  field(CALC, "B=0?A*0.01*255:A*0.01*65535")
+  field(OUT, "$(P)$(R)Over1CGreen PP")
+}
+
+record(calc, "$(P)$(R)CalCenterMarkColor-RB"){     # Cal. screen center marker color RB
+  field(DESC, "Cal. screen center marker color RB")
+  field(EGU, "%")
+  field(INPA, "$(P)$(R)Over1CGreen_RBV CPP")
+  field(INPB, "$(P)$(R)DataType-Sts")
+  # IF (bit_depth = 8 bit) => OUT = A*100 / 255
+  # ELSE => OUT = A*100 / 65535
+  field(CALC, "B=0?A*100/255:A*100/65535")
+}
+
+record(longout, "$(P)$(R)CalCenterMarkSize-SP"){   # Cal. screen center marker size SP
+  field(DESC, "Calibration screen center marker size")
+  field(PINI, "YES")
+  field(EGU, "pixels")
+  field(FLNK, "$(P)$(R)CalCenterMarkSizeSet")
+}
+
+record(dfanout, "$(P)$(R)CalCenterMarkSizeSet"){
+  field(DESC, "Cal. screen center marker size set")
+  field(OMSL, "closed_loop")
+  field(SELM, "All")
+  field(DOL, "$(P)$(R)CalCenterMarkSize-SP")
+  field(OUTA, "$(P)$(R)Over1CSizeX PP")
+  field(OUTB, "$(P)$(R)Over1CSizeY PP")
+}
+
+record(calc, "$(P)$(R)CalCenterMarkSize-RB"){      # Cal. screen center marker size RB
+  field(DESC, "Calibration screen center marker size RB")
+  field(EGU, "pixels")
+  field(INPA, "$(P)$(R)Over1CSizeX_RBV CPP")
+  field(INPB, "$(P)$(R)Over1CSizeY_RBV CPP")
+  field(CALC, "A>B?A:B")
+}
+
+record(seq, "$(P)$(R)CalCenterMarkUpdate"){        # Update calibration center marker position
+  field(DESC, "Update cal. center marker position")
+  field(SELM, "All")
+  field(DOL1, "$(P)$(R)CenterOffsetX-RB CPP")
+  field(LNK1, "$(P)$(R)Over1CCenterX PP")
+  field(DOL2, "$(P)$(R)CenterOffsetY-RB CPP")
+  field(LNK2, "$(P)$(R)Over1CCenterY PP")
+}
+
+# Overlay D - Real Screen Center Marker
+
+alias( "$(P)$(R)Over1DUse",                        "$(P)$(R)RealCenterMarkEnbl-Sel") # Enable real center marker (set)
+alias( "$(P)$(R)Over1DUse_RBV",                    "$(P)$(R)RealCenterMarkEnbl-Sts") # Real center marker status (read)
+
+record(longout, "$(P)$(R)RealCenterMarkColor-SP"){ # Real screen center marker color SP
+  field(DESC, "Real screen center marker color")
+  field(PINI, "YES")
+  field(EGU, "%")
+  field(DRVH, "100")
+  field(DRVL, "0")
+  field(FLNK, "$(P)$(R)RealCenterMarkColorCalc")
+}
+
+record(calcout, "$(P)$(R)RealCenterMarkColorCalc"){
+  field(DESC, "Real screen center marker color calc")
+  field(INPA, "$(P)$(R)RealCenterMarkColor-SP")
+  field(INPB, "$(P)$(R)DataType-Sts CPP") # must recalc if bit depth changes
+  # IF (bit_depth = 8 bit) => OUT = A/100 * 255
+  # ELSE => OUT = A/100 * 65535
+  field(CALC, "B=0?A*0.01*255:A*0.01*65535")
+  field(OUT, "$(P)$(R)Over1DGreen PP")
+}
+
+record(calc, "$(P)$(R)RealCenterMarkColor-RB"){    # Real screen center marker color RB
+  field(DESC, "Real screen center marker color RB")
+  field(EGU, "%")
+  field(INPA, "$(P)$(R)Over1DGreen_RBV CPP")
+  field(INPB, "$(P)$(R)DataType-Sts")
+  # IF (bit_depth = 8 bit) => OUT = A*100 / 255
+  # ELSE => OUT = A*100 / 65535
+  field(CALC, "B=0?A*100/255:A*100/65535")
+}
+
+record(longout, "$(P)$(R)RealCenterMarkSize-SP"){  # Real center marker size SP
+  field(DESC, "Real center marker size")
+  field(PINI, "YES")
+  field(EGU, "pixels")
+  field(FLNK, "$(P)$(R)RealCenterMarkSizeSet")
+}
+
+record(dfanout, "$(P)$(R)RealCenterMarkSizeSet"){
+  field(DESC, "Real center marker size set")
+  field(OMSL, "closed_loop")
+  field(SELM, "All")
+  field(DOL, "$(P)$(R)RealCenterMarkSize-SP")
+  field(OUTA, "$(P)$(R)Over1DSizeX PP")
+  field(OUTB, "$(P)$(R)Over1DSizeY PP")
+}
+
+record(calc, "$(P)$(R)RealCenterMarkSize-RB"){     # Real center marker size RB
+  field(DESC, "Real center marker size RB")
+  field(EGU, "pixels")
+  field(INPA, "$(P)$(R)Over1DSizeX_RBV CPP")
+  field(INPB, "$(P)$(R)Over1DSizeY_RBV CPP")
+  field(CALC, "A>B?A:B")
+}
+
+record(seq, "$(P)$(R)RealCenterMarkUpdate"){       # Update real center marker position
+  field(DESC, "Update real center marker position")
+  field(SELM, "All")
+  field(DOL1, "$(P)$(R)RealCenterX-Mon CPP")
+  field(LNK1, "$(P)$(R)Over1DCenterX PP")
+  field(DOL2, "$(P)$(R)RealCenterY-Mon CPP")
+  field(LNK2, "$(P)$(R)Over1DCenterY PP")
+}
+
+## FFMPEG Server - Stream compressed images
+
+alias( "$(P)$(R)ffmstream1EnableCallbacks",        "$(P)$(R)EnblMJPEG-Sel") # Enable MPEG streaming (set)
+alias( "$(P)$(R)ffmstream1EnableCallbacks_RBV",    "$(P)$(R)EnblMJPEG-Sts") # Enable MPEG streaming (read)
+alias( "$(P)$(R)ffmstream1MJPG_URL_RBV",           "$(P)$(R)MJPGURL-Cte")  # MPEG stream URL (read)
+
+# Auto settings
+
+record(seq, "$(P)$(R)MPEGAutoSettings"){
+  field(DESC, "Auto set MPEG parameters")
+  field(PINI, "YES")
+  field(SELM, "All")
+  field(DO1, "1")                                  # enable array callbacks
+  field(LNK1, "$(P)$(R)ffmstream1ArrayCallbacks PP")
+  field(DOL2, "$(P)$(R)Cam1DataType_RBV CPP")      # adjust data type
+  field(LNK2, "$(P)$(R)ffmstream1DataType PP")
+  field(DOL3, "$(P)$(R)Cam1Width_RBV CPP")         # adjust data width
+  field(LNK3, "$(P)$(R)ffmstream1MAXW PP")     
+  field(DOL4, "$(P)$(R)Cam1Height_RBV CPP")        # adjust data height
+  field(LNK4, "$(P)$(R)ffmstream1MAXH PP")
+}
+
+## Color Conversion - Color convert image before streaming
+
+# Auto settings
+
+record(seq, "$(P)$(R)CC1AutoSettings"){
+  field(DESC, "Auto set CC1 parameters")
+  field(PINI, "YES")
+  field(SELM, "All")
+  field(DO1, "1")                                  # enable array callbacks
+  field(LNK1, "$(P)$(R)CC1ArrayCallbacks PP")
+  field(DOL2, "$(P)$(R)Cam1DataType_RBV CPP")      # adjust data type
+  field(LNK2, "$(P)$(R)CC1DataType PP")
+}
+
+# Configurable Settings
+
+record(mbbo, "$(P)$(R)ColorConv-Sel"){
+  field(DESC, "Color convertion for mjpg stream")
+  field(ZRVL, "0")
+  field(ZRST, "Mono")
+  field(ONVL, "1")
+  field(ONST, "Rainbow")
+  field(TWVL, "2")
+  field(TWST, "Iron")
+  field(OUT, "$(P)$(R)ColorConvCalc.A PP")
+}
+
+record(calc, "$(P)$(R)ColorConvCalc"){
+  field(DESC, "Color convertion calc")
+  field(INPA, "0")
+  field(CALC, "A=0?1:2")
+  field(FLNK, "$(P)$(R)ColorConvSeq1")
+}
+
+record(seq, "$(P)$(R)ColorConvSeq1"){
+  field(DESC, "Color convertion seq 1")
+  field(SELM, "Specified")
+  field(SELL, "$(P)$(R)ColorConvCalc")
+  field(DO1, "1")
+  field(LNK1, "$(P)$(R)ColorConvSeq2.PROC PP")
+  field(DO2, "1")
+  field(LNK2, "$(P)$(R)ColorConvSeq3.PROC PP")
+}
+
+record(sseq, "$(P)$(R)ColorConvSeq2"){
+  field(DESC, "Color convertion seq 2")
+  field(SELM, "All")
+  field(STR1, "Disable")
+  field(LNK1, "$(P)$(R)CC1EnableCallbacks PP")
+  field(STR2, "CAMPORT")
+  field(LNK2, "$(P)$(R)ffmstream1NDArrayPort PP")
+  field(STR3, "Mono")
+  field(LNK3, "$(P)$(R)ffmstream1ColorMode PP")
+  field(STR4, "Off")
+  field(LNK4, "$(P)$(R)ffmstream1FALSE_COL PP")
+  field(DOL5, "$(P)$(R)ColorConv-Sel")
+  field(LNK5, "$(P)$(R)ColorConv-Sts PP")
+}
+
+record(sseq, "$(P)$(R)ColorConvSeq3"){
+  field(DESC, "Color convertion seq 3")
+  field(SELM, "All")
+  field(STR1, "Enable")
+  field(LNK1, "$(P)$(R)CC1EnableCallbacks PP")
+  field(STR2, "Mono")
+  field(LNK2, "$(P)$(R)CC1ColorMode PP")
+  field(STR3, "RGB1")
+  field(LNK3, "$(P)$(R)CC1ColorModeOut PP")
+  field(DOL4, "$(P)$(R)ColorConv-Sel")
+  field(LNK4, "$(P)$(R)CC1FalseColor PP")
+  field(STR5, "CC1")
+  field(LNK5, "$(P)$(R)ffmstream1NDArrayPort PP")
+  field(STR6, "RGB1")
+  field(LNK6, "$(P)$(R)ffmstream1ColorMode PP")
+  field(STR7, "On")
+  field(LNK7, "$(P)$(R)ffmstream1FALSE_COL PP")
+  field(DOL8, "$(P)$(R)ColorConv-Sel")
+  field(LNK8, "$(P)$(R)ColorConv-Sts PP")
+}
+
+record(mbbi, "$(P)$(R)ColorConv-Sts"){
+  field(DESC, "Color convertion for mjpg stream Sts")
+  field(ZRVL, "0")
+  field(ZRST, "Mono")
+  field(ONVL, "1")
+  field(ONST, "Rainbow")
+  field(TWVL, "2")
+  field(TWST, "Iron")
+}
+
+## Soft ROI applied to main image
+
+alias( "$(P)$(R)ROI1MinX",         "$(P)$(R)SoftROIOffsetX-SP") # SoftROI offset x (set)
+alias( "$(P)$(R)ROI1MinX_RBV",     "$(P)$(R)SoftROIOffsetX-RB") # SoftROI offset x (read)
+alias( "$(P)$(R)ROI1MinY",         "$(P)$(R)SoftROIOffsetY-SP") # SoftROI offset y (set)
+alias( "$(P)$(R)ROI1MinY_RBV",     "$(P)$(R)SoftROIOffsetY-RB") # SoftROI offset y (read)
+alias( "$(P)$(R)ROI1SizeX",        "$(P)$(R)SoftROIWidth-SP")  # SoftROI width (set)
+alias( "$(P)$(R)ROI1SizeX_RBV",    "$(P)$(R)SoftROIWidth-RB")  # SoftROI width (read)
+alias( "$(P)$(R)ROI1SizeY",        "$(P)$(R)SoftROIHeight-SP") # SoftROI height (set)
+alias( "$(P)$(R)ROI1SizeY_RBV",    "$(P)$(R)SoftROIHeight-RB") # SoftROI height (read)
+
+# protect limits
+
+record(calcout, "$(P)$(R)SoftROIOffsetXCalc"){
+  field(DESC, "Set soft ROI offset x limit")
+  field(PINI, "YES")
+  field(INPA, "$(P)$(R)ROI1SizeX_RBV CPP")
+  field(INPB, "$(P)$(R)AOIWidth-RB CPP") # camera frame width
+  field(INPC, "$(P)$(R)ROI1MinX_RBV CPP") # used below in proc chain
+  field(CALC, "B-A")
+  field(OUT, "$(P)$(R)ROI1MinX.DRVH")
+  field(FLNK, "$(P)$(R)SoftROIOffsetXCalc2")
+}
+
+record(calcout, "$(P)$(R)SoftROIOffsetXCalc2"){
+  field(DESC, "Disable offset x when ROI size is max")
+  field(INPA, "$(P)$(R)SoftROIOffsetXCalc.VAL")
+  field(CALC, "A=0")
+  field(OUT, "$(P)$(R)ROI1MinX.DISA")
+  field(FLNK, "$(P)$(R)SoftROIWidthCalc")
+}
+
+record(calcout, "$(P)$(R)SoftROIWidthCalc"){
+  field(DESC, "Set soft ROI width limit")
+  field(INPA, "$(P)$(R)ROI1MinX_RBV")
+  field(INPB, "$(P)$(R)AOIWidth-RB") # camera frame width
+  field(CALC, "B-A")
+  field(OUT, "$(P)$(R)ROI1SizeX.DRVH")
+}
+
+record(calcout, "$(P)$(R)SoftROIOffsetYCalc"){
+  field(DESC, "Set soft ROI offset y limit")
+  field(PINI, "YES")
+  field(INPA, "$(P)$(R)ROI1SizeY_RBV CPP")
+  field(INPB, "$(P)$(R)AOIHeight-RB CPP") # camera frame height
+  field(INPC, "$(P)$(R)ROI1MinY_RBV CPP") # used below in proc chain
+  field(CALC, "B-A")
+  field(OUT, "$(P)$(R)ROI1MinY.DRVH")
+  field(FLNK, "$(P)$(R)SoftROIOffsetYCalc2")
+}
+
+record(calcout, "$(P)$(R)SoftROIOffsetYCalc2"){
+  field(DESC, "Disable offset y when ROI size is max")
+  field(INPA, "$(P)$(R)SoftROIOffsetYCalc.VAL")
+  field(CALC, "A=0")
+  field(OUT, "$(P)$(R)ROI1MinY.DISA")
+  field(FLNK, "$(P)$(R)SoftROIHeightCalc")
+}
+
+record(calcout, "$(P)$(R)SoftROIHeightCalc"){
+  field(DESC, "Set soft ROI height limit")
+  field(INPA, "$(P)$(R)ROI1MinY_RBV")
+  field(INPB, "$(P)$(R)AOIHeight-RB") # camera frame height
+  field(CALC, "B-A")
+  field(OUT, "$(P)$(R)ROI1SizeY.DRVH")
+}
+
+# Auto center ROI
+record(bo, "$(P)$(R)SoftROIAutoCenterX-Sel"){
+  field(DESC, "Auto center soft ROI along X")
+  field(PINI, "YES")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(FLNK, "$(P)$(R)SoftROIAutoCenterX-Sts")
+}
+
+record(bi, "$(P)$(R)SoftROIAutoCenterX-Sts"){
+  field(DESC, "Auto center soft ROI along X Sts")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(INP, "$(P)$(R)SoftROIAutoCenterX-Sel")
+  field(FLNK, "$(P)$(R)SoftROIAutoCenterXCalc")
+}
+
+record(calcout, "$(P)$(R)SoftROIAutoCenterXCalc"){
+  field(DESC, "Validate auto center x cmd")
+  field(INPA, "$(P)$(R)SoftROIAutoCenterX-Sts")
+  field(INPB, "$(P)$(R)AOIWidth-RB")
+  field(INPC, "$(P)$(R)ROI1SizeX_RBV CPP")
+  field(CALC, "A")
+  field(OCAL, "(B-C)*0.5")
+  field(OOPT, "When Non-zero")
+  field(DOPT, "Use OCAL")
+  field(OUT, "$(P)$(R)ROI1MinX PP")
+}
+
+record(bo, "$(P)$(R)SoftROIAutoCenterY-Sel"){
+  field(DESC, "Auto center soft ROI along Y")
+  field(PINI, "YES")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(FLNK, "$(P)$(R)SoftROIAutoCenterY-Sts")
+}
+
+record(bi, "$(P)$(R)SoftROIAutoCenterY-Sts"){
+  field(DESC, "Auto center soft ROI along Y Sts")
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(INP, "$(P)$(R)SoftROIAutoCenterY-Sel")
+  field(FLNK, "$(P)$(R)SoftROIAutoCenterYCalc")
+}
+
+record(calcout, "$(P)$(R)SoftROIAutoCenterYCalc"){
+  field(DESC, "Validate auto center y cmd")
+  field(INPA, "$(P)$(R)SoftROIAutoCenterY-Sts")
+  field(INPB, "$(P)$(R)AOIHeight-RB")
+  field(INPC, "$(P)$(R)ROI1SizeY_RBV CPP")
+  field(CALC, "A")
+  field(OCAL, "(B-C)*0.5")
+  field(OOPT, "When Non-zero")
+  field(DOPT, "Use OCAL")
+  field(OUT, "$(P)$(R)ROI1MinY PP")
+}
