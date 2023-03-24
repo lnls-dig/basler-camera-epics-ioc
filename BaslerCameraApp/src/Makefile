@@ -18,6 +18,8 @@ BaslerCamera_DBD += base.dbd
 # Include dbd files from all support applications:
 BaslerCamera_DBD += asyn.dbd
 BaslerCamera_DBD += calc.dbd
+BaslerCamera_DBD += busySupport.dbd
+BaslerCamera_DBD += NDPluginSupport.dbd
 BaslerCamera_DBD += ADAravisSupport.dbd
 
 # Add all the support libraries needed by this IOC
@@ -37,6 +39,9 @@ BaslerCamera_SRCS_vxWorks += -nil-
 
 # Finally link to the EPICS Base libraries
 BaslerCamera_LIBS += $(EPICS_BASE_IOC_LIBS)
+
+# Load libraries from common area detector plugins
+include $(ADCORE)/ADApp/commonDriverMakefile
 
 #===========================
 
