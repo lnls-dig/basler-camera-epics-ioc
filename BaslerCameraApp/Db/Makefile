@@ -7,6 +7,8 @@ include $(TOP)/configure/CONFIG
 # Create and install (or just install) into <top>/db
 # databases, templates, substitutions like this
 DB += acA1300-75gm.db
+DB += acA3088-16gm.db
+DB += acA640-300gm.db
 DB += standard.db
 
 #----------------------------------------------------
