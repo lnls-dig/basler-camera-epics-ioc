@@ -22,20 +22,18 @@
 # the CONFIG_SITE file.
 
 # Variables and paths to dependent modules:
-MODULES = /opt
+ASYN=
+CALC=
+AUTOSAVE=
+BUSY=
 
-ASYN = $(MODULES)/asyn-R4-43
-CALC = $(MODULES)/calc-R3-7-4
-AUTOSAVE = $(MODULES)/autosave-R5-10-2
-BUSY = $(MODULES)/busy-R1-7-3
-
-AREA_DETECTOR = $(MODULES)/areaDetector-R3-12-1
-ADCORE = $(AREA_DETECTOR)/ADCore
-ADGENICAM = $(AREA_DETECTOR)/ADGenICam
-ADARAVIS = $(AREA_DETECTOR)/ADAravis
+AREA_DETECTOR=
+ADCORE=
+ADGENICAM=
+ADARAVIS=
 
 # EPICS_BASE should appear last so earlier modules can override stuff:
-EPICS_BASE = /opt/epics-R7-0-7/base
+EPICS_BASE=
 
 # Set RULES here if you want to use build rules from somewhere
 # other than EPICS_BASE:

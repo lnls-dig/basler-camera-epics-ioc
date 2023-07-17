@@ -1,0 +1,20 @@
+services:
+  ioc:
+    image: ghcr.io/lnls-dig/basler-camera-epics-ioc
+    build:
+      context: ./
+      dockerfile: docker/Dockerfile
+      target: dynamic-link
+      labels:
+        org.opencontainers.image.source: https://github.com/lnls-dig/basler-camera-epics-ioc
+      args:
+        REPONAME: basler-camera-epics-ioc
+        RUNDIR: /opt/basler-camera-epics-ioc/iocBoot/iocBaslerCamera
+        ENTRYPOINT: ./st.cmd
+        RUNTIME_PACKAGES: libxml2 libaravis-0.8-0
+    network_mode: host
+    stdin_open: true
+    environment:
+      BASLER_IP_ADDRESS: ${BASLER_IP_ADDRESS}
+      EPICS_PV_AREA_PREFIX: ${EPICS_PV_AREA_PREFIX}
+      EPICS_PV_DEVICE_PREFIX: ${EPICS_PV_DEVICE_PREFIX}
