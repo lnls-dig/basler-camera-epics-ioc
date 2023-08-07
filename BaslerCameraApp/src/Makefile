@@ -9,22 +9,10 @@ include $(TOP)/configure/CONFIG
 # Build the IOC application
 
 PROD_IOC = BaslerCamera
-# BaslerCamera.dbd will be created and installed
+
 DBD += BaslerCamera.dbd
 
-# BaslerCamera.dbd will be made up from these files:
-BaslerCamera_DBD += base.dbd
-
-# Include dbd files from all support applications:
-BaslerCamera_DBD += asyn.dbd
-BaslerCamera_DBD += calc.dbd
-BaslerCamera_DBD += busySupport.dbd
-BaslerCamera_DBD += NDPluginSupport.dbd
 BaslerCamera_DBD += ADAravisSupport.dbd
-
-# Add all the support libraries needed by this IOC
-BaslerCamera_LIBS += asyn
-BaslerCamera_LIBS += calc
 BaslerCamera_LIBS += ADAravis
 
 # BaslerCamera_registerRecordDeviceDriver.cpp derives from BaslerCamera.dbd
@@ -34,18 +22,15 @@ BaslerCamera_SRCS += BaslerCamera_registerRecordDeviceDriver.cpp
 BaslerCamera_SRCS_DEFAULT += BaslerCameraMain.cpp
 BaslerCamera_SRCS_vxWorks += -nil-
 
-# Add support from base/src/vxWorks if needed
-#BaslerCamera_OBJS_vxWorks += $(EPICS_BASE_BIN)/vxComLibrary
+# Load libraries from common areaDetector plugins
+DBD_NAME = $(PROD_IOC)
+include $(ADCORE)/ADApp/commonDriverMakefile
 
 # Finally link to the EPICS Base libraries
 BaslerCamera_LIBS += $(EPICS_BASE_IOC_LIBS)
-
-# Load libraries from common area detector plugins
-include $(ADCORE)/ADApp/commonDriverMakefile
 
 #===========================
 
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
-
